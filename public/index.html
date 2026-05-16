@@ -624,10 +624,10 @@ async function deletePubReport(id){if(!confirm('حذف؟'))return;try{await api(
 function renderDashDivision(){
   if(!can('division_members','full'))return
   const m=window._divisionMembers||[]
-  const canManage=currentUser.is_owner||currentUser.role==='FULL ACCESS'
-  const roleDiv={FTO:'FTO',IA:'IA','WING COMMANDER':'WINGS'}
+  const isSuper=currentUser.is_owner||currentUser.role==='FULL ACCESS'
+  const roleDiv={'FTO CHIEF':'FTO','IA CHIEF':'IA','WING COMMANDER':'WINGS'}
   const myDiv=roleDiv[currentUser.role]
-  const divisions=canManage?['FTO','IA','WINGS']:(myDiv?[myDiv]:[])
+  const divisions=isSuper?['FTO','IA','WINGS']:(myDiv?[myDiv]:[])
   document.getElementById('dash-division-content').innerHTML=divisions.map(d=>{
     const members=m.filter(x=>x.division===d)
     return `<div class="form-card" style="max-width:100%"><h3>${d}</h3>
