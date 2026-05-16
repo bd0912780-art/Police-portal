@@ -511,6 +511,16 @@ function renderDashAnn(){
   document.getElementById('dash-ann').innerHTML=a.length?a.slice(0,4).map(x=>`<div class="ann"><div class="ann-header"><div class="ann-title">${x.title}</div><div class="ann-date">📅 ${x.date}</div></div><div class="ann-body">${x.body}${can('reports','full')?`<button class="action-btn delete" onclick="deleteDashAnn(${x.id})" style="float:left;margin-top:4px">🗑️</button>`:''}</div></div>`).join(''):'<div class="empty-state"><p>لا توجد إعلانات</p></div>'
 }
 
+function confirmModal(msg){
+  return new Promise(resolve=>{
+    document.getElementById('confirm-msg').textContent=msg
+    const ov=document.getElementById('confirm-overlay')
+    ov.classList.add('visible')
+    document.getElementById('confirm-yes').onclick=()=>{ov.classList.remove('visible');resolve(true)}
+    document.getElementById('confirm-no').onclick=()=>{ov.classList.remove('visible');resolve(false)}
+  })
+}
+
 /* ─── DASHBOARD NAV ─── */
 function showDash(id,btn){
   document.querySelectorAll('.content > div').forEach(d=>d.classList.add('hidden'))
@@ -533,8 +543,8 @@ async function createDashReport(){
   try{await api('POST','/api/reports',{title:t,body:b});document.getElementById('rep-title').value='';document.getElementById('rep-body').value='';window._reports=await api('GET','/api/reports');renderDashReports();toast('✅ تم النشر','success')}catch(e){toast(e.message,'error')}
 }
 
-async function deleteDashReport(id){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/reports/${id}`);window._reports=await api('GET','/api/reports');renderDashReports();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
-async function deleteDashAnn(id){if(!confirm('حذف الإعلان؟'))return;try{await api('DELETE',`/api/announcements/${id}`);window._ann=await api('GET','/api/announcements');renderDashAnn();renderDashAnnouncements();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deleteDashReport(id){if(!await confirmModal('حذف التقرير؟'))return;try{await api('DELETE',`/api/reports/${id}`);window._reports=await api('GET','/api/reports');renderDashReports();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deleteDashAnn(id){if(!await confirmModal('حذف الإعلان؟'))return;try{await api('DELETE',`/api/announcements/${id}`);window._ann=await api('GET','/api/announcements');renderDashAnn();renderDashAnnouncements();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
 function renderDashAnnouncements(){
   if(!can('reports','create'))return
@@ -560,7 +570,7 @@ function sLbl(s){return{pending:'قيد المراجعة',accepted:'مقبول',
 async function updateAppStatus(id,status,type){
   try{await api('PUT',`/api/applications/${id}/status`,{status});const f=type==='transfer'?'transfers':'apps';window['_'+f]=await api('GET',`/api/applications?type=${type}`);renderDashApps(type==='transfer'?'transfers':'apps','dash-'+f+'-table',type);renderStats();toast(status==='accepted'?'✅ تم القبول':'❌ تم الرفض',status==='accepted'?'success':'error')}catch(e){toast(e.message,'error')}
 }
-async function deleteApp(id,type){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/applications/${id}`);const f=type==='transfer'?'transfers':'apps';window['_'+f]=await api('GET',`/api/applications?type=${type}`);renderDashApps(type==='transfer'?'transfers':'apps','dash-'+f+'-table',type);renderStats();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deleteApp(id,type){if(!await confirmModal('حذف التقديم؟'))return;try{await api('DELETE',`/api/applications/${id}`);const f=type==='transfer'?'transfers':'apps';window['_'+f]=await api('GET',`/api/applications?type=${type}`);renderDashApps(type==='transfer'?'transfers':'apps','dash-'+f+'-table',type);renderStats();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
 /* ─── CERTIFICATES ─── */
 function renderDashCerts(){
@@ -600,8 +610,10 @@ function renderDashCerts(){
       </div>
     </div>
   </div>
+  <div class="section-title" style="margin-top:24px">📄 آخر شهادة مصدرة</div>
+  <div id="cert-last-issued"></div>
   <div class="section-title" style="margin-top:24px">🗂️ الشهادات المحفوظة</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px" id="saved-certs">${c.length?c.map(x=>`<div class="stat-card"><div style="font-size:20px;margin-bottom:4px">${x.cert_type==='PROMOTION'?'🏅':'🎓'}</div><div style="font-weight:700;font-size:13px">${x.officer_name}</div><div style="font-size:11px;color:var(--muted)">${x.rank_name}<br>📅 ${x.issue_date}</div><button class="action-btn delete" onclick="deleteDashCert(${x.id})" style="margin-top:6px">🗑️</button></div>`).join(''):'<div class="empty-state" style="grid-column:1/-1"><p>لا توجد شهادات</p></div>'}</div>`
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px" id="saved-certs">${c.length?c.map(x=>`<div class="stat-card"><div style="font-size:20px;margin-bottom:4px">${x.cert_type==='PROMOTION'?'🏅':'🎓'}</div><div style="font-weight:700;font-size:13px">${x.officer_name}</div><div style="font-size:11px;color:var(--muted)">${x.rank_name}<br>📅 ${x.issue_date}</div><div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="action-btn accept" onclick="printCert(${x.id})" title="طباعة">🖨️</button><button class="action-btn delete" onclick="deleteDashCert(${x.id})">🗑️</button></div></div>`).join(''):'<div class="empty-state" style="grid-column:1/-1"><p>لا توجد شهادات</p></div>'}</div>`
   const d=document.getElementById('c-date');if(!d.value)d.value=new Date().toISOString().slice(0,10)
   updateCertPreview()
 }
@@ -621,11 +633,60 @@ async function issueDashCert(){
   if(!n||!r){toast('أدخل الاسم والرتبة','error');return}
   try{await api('POST','/api/certificates',{officer_name:n,cert_type:document.getElementById('c-type').value,rank_name:r,issue_date:document.getElementById('c-date').value})
     document.getElementById('c-name').value='';document.getElementById('c-rank').value=''
-    window._certs=await api('GET','/api/certificates');renderDashCerts();toast('✅ تم إصدار الشهادة','success')
+    window._certs=await api('GET','/api/certificates');renderDashCerts()
+    const lastCert=window._certs?.[0];if(lastCert){document.getElementById('cert-last-issued').innerHTML=viewCertHtml(lastCert)+'<button class="btn btn-sm" onclick="printCert('+lastCert.id+')" style="margin-top:10px">🖨️ طباعة</button>'}
+    toast('✅ تم إصدار الشهادة','success')
   }catch(e){toast(e.message,'error')}
 }
 
-async function deleteDashCert(id){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/certificates/${id}`);window._certs=await api('GET','/api/certificates');renderDashCerts();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+function viewCertHtml(x){
+  const titles={'PROMOTION':'CERTIFICATE OF PROMOTION','TRAINING':'CERTIFICATE OF TRAINING','EXCELLENCE':'CERTIFICATE OF EXCELLENCE','GRADUATION':'CERTIFICATE OF GRADUATION'}
+  return `<div class="cert-doc" style="margin:10px 0">
+    <div class="cc tl"></div><div class="cc tr"></div><div class="cc bl"></div><div class="cc br"></div>
+    <div class="cert-doc-title">${titles[x.cert_type]||'CERTIFICATE'}</div>
+    <div class="cert-doc-dept">LSPD - LOS SANTOS POLICE DEPARTMENT</div>
+    <hr class="cert-hr"><div style="text-align:center;font-size:32px;margin:4px 0">⭐</div><hr class="cert-hr">
+    <div class="cert-name-area"><div class="cert-name-lbl">THIS CERTIFIES THAT</div><div class="cert-name-val">${x.officer_name}</div></div>
+    <div class="cert-promoted-lbl">has been awarded the rank of</div>
+    <div class="cert-rank-val">${x.rank_name}</div>
+    <div class="cert-desc-text">In recognition of outstanding performance and dedication<br>to the Los Santos Police Department.</div>
+    <div class="cert-footer">
+      <div style="font-size:24px">👑</div>
+      <div class="cert-date-area">Awarded on:<br><span style="color:#c0d0e0;font-size:9px">${x.issue_date||'—'}</span><div class="cert-id-text">ID: ${x.id||'—'}</div></div>
+      <div class="cert-sig-area">Authorized by:<div class="cert-sig-name">${x.issued_name||'Chief of Police'}</div></div>
+    </div>
+  </div>`
+}
+
+async function printCert(id){
+  const c=window._certs?.find(x=>x.id==id);if(!c){toast('الشهادة غير موجودة','error');return}
+  const w=window.open('','_blank');if(!w){toast('اسمح بالنوافذ المنبثقة للطباعة','error');return}
+  w.document.write(`<!DOCTYPE html><html dir="ltr"><head><meta charset="utf-8"><title>Certificate - ${c.officer_name}</title>
+  <style>body{margin:0;padding:20px;font-family:'Cairo',sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#fff}
+  .cert-doc{width:700px;padding:36px;background:#fff9f0;border:2px solid #c9a84c;position:relative;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+  .cert-doc-title{font-size:22px;font-weight:900;text-align:center;color:#1a3a5c;letter-spacing:2px;margin-bottom:4px}
+  .cert-doc-dept{text-align:center;font-size:11px;color:#8a7a4a;letter-spacing:1px;margin-bottom:6px;font-weight:600}
+  .cert-hr{border:none;height:1px;background:linear-gradient(to right,transparent,#c9a84c,transparent);margin:8px 0}
+  .cert-name-area{text-align:center;margin:14px 0 6px}
+  .cert-name-lbl{font-size:11px;color:#8a7a4a;letter-spacing:2px}
+  .cert-name-val{font-size:30px;font-weight:900;color:#1a3a5c;letter-spacing:3px}
+  .cert-promoted-lbl{text-align:center;font-size:12px;color:#5a6a7a;font-style:italic}
+  .cert-rank-val{text-align:center;font-size:26px;font-weight:700;color:#c9a84c;margin:6px 0}
+  .cert-desc-text{text-align:center;font-size:11px;color:#5a6a7a;margin:14px 0 18px;line-height:1.6}
+  .cert-footer{display:flex;justify-content:space-between;align-items:end;padding-top:10px;border-top:1px solid #e0d5b8}
+  .cert-date-area{font-size:10px;color:#5a6a7a;text-align:center}
+  .cert-id-text{font-size:9px;color:#8a7a4a;margin-top:2px}
+  .cert-sig-area{text-align:center;font-size:10px;color:#5a6a7a}
+  .cert-sig-name{font-size:13px;font-weight:700;color:#1a3a5c;border-top:1px solid #1a3a5c;padding-top:4px;margin-top:2px;min-width:140px}
+  .cc{position:absolute;width:20px;height:20px;border-color:#c9a84c;border-style:solid}
+  .cc.tl{top:8px;left:8px;border-width:2px 0 0 2px}.cc.tr{top:8px;right:8px;border-width:2px 2px 0 0}
+  .cc.bl{bottom:8px;left:8px;border-width:0 0 2px 2px}.cc.br{bottom:8px;right:8px;border-width:0 2px 2px 0}
+  @media print{body{padding:0}.cert-doc{box-shadow:none;border:2px solid #c9a84c}}</style></head><body>
+  ${viewCertHtml(c)}<script>window.onload=function(){window.print();window.close()}<\/script></body></html>`)
+  w.document.close()
+}
+
+async function deleteDashCert(id){if(!await confirmModal('حذف الشهادة؟'))return;try{await api('DELETE',`/api/certificates/${id}`);window._certs=await api('GET','/api/certificates');renderDashCerts();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
 /* ─── PUBLIC REPORTS (Admin) ─── */
 function renderDashPubReports(){
@@ -634,7 +695,7 @@ function renderDashPubReports(){
   const r=window._pubReports||[]
   document.getElementById('dash-pubreports-list').innerHTML=r.length?r.map(x=>`<div class="report-card"><div class="ann-header"><div class="ann-title">📝 ${x.name} ${x.rank?'('+x.rank+')':''}</div><div class="ann-date">${x.date?.slice(0,10)}</div></div><div class="ann-body">${x.body}</div>${x.link?`<a href="${x.link}" target="_blank" class="ann-tag" style="display:inline-block;margin-top:6px;text-decoration:none">🔗 رابط</a>`:''}${can('applications','full')?`<button class="action-btn delete" onclick="deletePubReport(${x.id})" style="float:left;margin-top:4px">🗑️</button>`:''}</div>`).join(''):'<div class="empty-state"><p>لا توجد تقارير عامة</p></div>'
 }
-async function deletePubReport(id){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/public-reports/${id}`);window._pubReports=await api('GET','/api/public-reports');renderDashPubReports();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deletePubReport(id){if(!await confirmModal('حذف التقرير العام؟'))return;try{await api('DELETE',`/api/public-reports/${id}`);window._pubReports=await api('GET','/api/public-reports');renderDashPubReports();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
 /* ─── DIVISION MEMBERS ─── */
 function renderDashDivision(){
@@ -676,7 +737,7 @@ async function editNote(id,name,current){
   try{await api('PUT',`/api/division-members/${id}/notes`,{notes:n});window._divisionMembers=await api('GET','/api/division-members');renderDashDivision();toast('✅ تم الحفظ','success')}catch(e){toast(e.message,'error')}
 }
 async function deleteDivisionMember(id,name){
-  if(!confirm('حذف '+name+'?'))return
+  if(!await confirmModal('حذف '+name+'?'))return
   try{await api('DELETE',`/api/division-members/${id}`);window._divisionMembers=await api('GET','/api/division-members');renderDashDivision();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}
 }
 
@@ -686,7 +747,7 @@ function renderDashLogs(){
   const l=window._logs||[]
   document.getElementById('dash-logs-table').innerHTML=l.length?l.map(x=>`<div class="ann" style="padding:10px 14px;border-right-color:var(--muted)"><div style="display:flex;gap:8px;font-size:12px"><span style="color:var(--accent2);min-width:70px">${x.date?.slice(0,16)||''}</span><span style="color:var(--gold2);font-weight:700">${x.username||'—'}</span><span>${x.action}</span><span style="color:var(--muted)">${x.details||''}</span></div></div>`).join(''):'<div class="empty-state"><p>لا توجد سجلات</p></div>'
 }
-async function clearLogs(){if(!confirm('مسح؟'))return;try{await api('DELETE','/api/logs');window._logs=[];renderDashLogs();toast('🗑️ تم المسح','info')}catch(e){toast(e.message,'error')}}
+async function clearLogs(){if(!await confirmModal('مسح جميع السجلات؟'))return;try{await api('DELETE','/api/logs');window._logs=[];renderDashLogs();toast('🗑️ تم المسح','info')}catch(e){toast(e.message,'error')}}
 
 /* ─── SETTINGS ─── */
 function renderDashSettings(){
@@ -761,11 +822,21 @@ async function createUser(){
   if(!u||!p||!d){toast('املأ جميع الحقول','error');return}
   try{await api('POST','/api/users',{username:u,password:p,display_name:d,emoji:'👤',role:r});window._users=await api('GET','/api/users');renderDashAccounts();toast('✅ تمت الإضافة','success');document.getElementById('au-display').value='';document.getElementById('au-user').value='';document.getElementById('au-pass').value=''}catch(e){toast(e.message,'error')}
 }
-async function deleteUser(id){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/users/${id}`);window._users=await api('GET','/api/users');renderDashAccounts();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deleteUser(id){if(!await confirmModal('حذف الحساب؟'))return;try{await api('DELETE',`/api/users/${id}`);window._users=await api('GET','/api/users');renderDashAccounts();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
 /* ─── INIT ─── */
 checkAuth()
 loadAnnouncements()
 </script>
+<div id="confirm-overlay" class="login-overlay">
+  <div class="login-box" style="width:380px;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+    <div id="confirm-msg" style="margin-bottom:20px;font-size:14px;color:var(--text)"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn" id="confirm-yes" style="background:var(--danger)">✅ نعم</button>
+      <button class="btn btn-sm" id="confirm-no" style="background:transparent;border:1px solid var(--border)">❌ لا</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
