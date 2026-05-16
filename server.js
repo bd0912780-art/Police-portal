@@ -603,7 +603,7 @@ initDB().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`âœ… LSPD Portal running on http://localhost:${PORT}`);
     console.log(`   Network:  http://${ip}:${PORT}`);
-    console.log(`   Owner: admin / admin123`);
+    console.log(`   Owner: the king / Klk98lkl`);
     console.log(`   Roles: ${Object.keys(RANKS_DATA).join(', ')}`);
   });
 });
