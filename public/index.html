@@ -216,6 +216,7 @@ tbody tr:last-child td{border-bottom:none}
       <button class="side-btn hidden" id="sb-apps" onclick="showDash('apps',this)"><span class="side-btn-icon">📋</span> التقديمات</button>
       <button class="side-btn hidden" id="sb-transfers" onclick="showDash('transfers',this)"><span class="side-btn-icon">🔄</span> النقل</button>
       <button class="side-btn hidden" id="sb-certs" onclick="showDash('certs',this)"><span class="side-btn-icon">🎓</span> الشهادات</button>
+      <button class="side-btn hidden" id="sb-announcements" onclick="showDash('announcements',this)"><span class="side-btn-icon">📢</span> الإعلانات</button>
       <button class="side-btn hidden" id="sb-pubreports" onclick="showDash('pubreports',this)"><span class="side-btn-icon">📝</span> التقارير العامة</button>
       <button class="side-btn hidden" id="sb-division" onclick="showDash('division',this)"><span class="side-btn-icon">👥</span> أعضاء الأقسام</button>
       <button class="side-btn hidden" id="sb-logs" onclick="showDash('logs',this)"><span class="side-btn-icon">📜</span> السجلات</button>
@@ -232,6 +233,7 @@ tbody tr:last-child td{border-bottom:none}
         <div class="section-title">📢 الإعلانات</div>
         <div id="dash-ann"></div>
       </div>
+      <div id="dash-announcements" class="hidden"><div class="section-title">📢 إدارة الإعلانات</div><div id="dash-announcements-create"></div><div id="dash-announcements-list"></div></div>
       <div id="dash-reports" class="hidden"><div class="section-title">📊 التقارير الداخلية</div><div id="dash-reports-create" class="hidden"></div><div id="dash-reports-list"></div></div>
       <div id="dash-apps" class="hidden"><div class="section-title">📋 التقديمات</div><div id="dash-apps-table"></div></div>
       <div id="dash-transfers" class="hidden"><div class="section-title">🔄 طلبات النقل</div><div id="dash-transfers-table"></div></div>
@@ -452,13 +454,14 @@ function can(f,l='view'){if(currentUser?.is_owner)return true;const p=PERM[f]?.[
 /* ─── DASHBOARD ─── */
 async function setupDash(){
   const isHead=currentUser.is_owner||currentUser.role==='FULL ACCESS'
-  const btns={reports:['reports','view'],apps:['applications','view'],transfers:['applications','view'],certs:['certificates','full'],pubreports:['applications','view'],division:['division_members','full'],logs:['logs','full'],settings:['settings','full'],accounts:['accounts','full']}
+  const btns={reports:['reports','view'],announcements:['reports','create'],apps:['applications','view'],transfers:['applications','view'],certs:['certificates','full'],pubreports:['applications','view'],division:['division_members','full'],logs:['logs','full'],settings:['settings','full'],accounts:['accounts','full']}
   Object.entries(btns).forEach(([id,[f,l]])=>{document.getElementById('sb-'+id).classList.toggle('hidden',id==='pubreports'?!isHead:!can(f,l))})
   document.getElementById('dash-profile').innerHTML=`<div class="profile-card"><div class="avatar">${currentUser.emoji}</div><div class="profile-info"><h2>${currentUser.display_name} ${currentUser.is_owner?'<span class="owner-badge">👑 مالك</span>':''}</h2><p>${currentUser.role}</p></div></div>`
   await loadDashData()
   renderStats()
   renderMemberStats()
   renderDashAnn()
+  renderDashAnnouncements()
   renderDashReports()
   renderDashApps('apps','dash-apps-table','application')
   renderDashApps('transfers','dash-transfers-table','transfer')
@@ -531,7 +534,19 @@ async function createDashReport(){
 }
 
 async function deleteDashReport(id){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/reports/${id}`);window._reports=await api('GET','/api/reports');renderDashReports();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
-async function deleteDashAnn(id){if(!confirm('حذف الإعلان؟'))return;try{await api('DELETE',`/api/announcements/${id}`);window._ann=await api('GET','/api/announcements');renderDashAnn();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deleteDashAnn(id){if(!confirm('حذف الإعلان؟'))return;try{await api('DELETE',`/api/announcements/${id}`);window._ann=await api('GET','/api/announcements');renderDashAnn();renderDashAnnouncements();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+
+function renderDashAnnouncements(){
+  if(!can('reports','create'))return
+  const a=window._ann||[]
+  document.getElementById('dash-announcements-create').innerHTML=can('reports','create')?`<div class="form-card"><h3>📢 إضافة إعلان</h3><div class="field"><label>العنوان</label><input type="text" id="ann-title"></div><div class="field"><label>المحتوى</label><textarea id="ann-body" rows="3"></textarea></div><button class="btn btn-sm" onclick="createAnnouncement()">📢 نشر</button></div>`:''
+  document.getElementById('dash-announcements-list').innerHTML=a.length?a.map(x=>`<div class="ann"><div class="ann-header"><div class="ann-title">${x.title}</div><div class="ann-date">📅 ${x.date}</div></div><div class="ann-body">${x.body}${can('reports','full')?`<button class="action-btn delete" onclick="deleteDashAnn(${x.id})" style="float:left;margin-top:4px">🗑️</button>`:''}</div></div>`).join(''):'<div class="empty-state"><p>لا توجد إعلانات</p></div>'
+}
+async function createAnnouncement(){
+  const t=document.getElementById('ann-title').value.trim(),b=document.getElementById('ann-body').value.trim()
+  if(!t||!b){toast('أدخل العنوان والمحتوى','error');return}
+  try{await api('POST','/api/announcements',{title:t,body:b});document.getElementById('ann-title').value='';document.getElementById('ann-body').value='';window._ann=await api('GET','/api/announcements');renderDashAnn();renderDashAnnouncements();toast('✅ تم النشر','success')}catch(e){toast(e.message,'error')}
+}
 
 /* ─── APPLICATIONS ─── */
 function renderDashApps(type,elId,filter){
