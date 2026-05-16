@@ -505,7 +505,7 @@ function renderMemberStats(){
 
 function renderDashAnn(){
   const a=window._ann||[]
-  document.getElementById('dash-ann').innerHTML=a.length?a.slice(0,4).map(x=>`<div class="ann"><div class="ann-header"><div class="ann-title">${x.title}</div><div class="ann-date">📅 ${x.date}</div></div><div class="ann-body">${x.body}</div></div>`).join(''):'<div class="empty-state"><p>لا توجد إعلانات</p></div>'
+  document.getElementById('dash-ann').innerHTML=a.length?a.slice(0,4).map(x=>`<div class="ann"><div class="ann-header"><div class="ann-title">${x.title}</div><div class="ann-date">📅 ${x.date}</div></div><div class="ann-body">${x.body}${can('reports','full')?`<button class="action-btn delete" onclick="deleteDashAnn(${x.id})" style="float:left;margin-top:4px">🗑️</button>`:''}</div></div>`).join(''):'<div class="empty-state"><p>لا توجد إعلانات</p></div>'
 }
 
 /* ─── DASHBOARD NAV ─── */
@@ -531,6 +531,7 @@ async function createDashReport(){
 }
 
 async function deleteDashReport(id){if(!confirm('حذف؟'))return;try{await api('DELETE',`/api/reports/${id}`);window._reports=await api('GET','/api/reports');renderDashReports();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
+async function deleteDashAnn(id){if(!confirm('حذف الإعلان؟'))return;try{await api('DELETE',`/api/announcements/${id}`);window._ann=await api('GET','/api/announcements');renderDashAnn();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
 /* ─── APPLICATIONS ─── */
 function renderDashApps(type,elId,filter){
