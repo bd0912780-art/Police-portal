@@ -178,7 +178,7 @@ tbody tr:last-child td{border-bottom:none}
     <button class="nav-btn gold" onclick="showPublic('home')">🏠</button>
     <button class="nav-btn" onclick="showPublic('ann')">📢 الإعلانات</button>
     <button class="nav-btn" onclick="showPublic('apply')">📋 تقديم</button>
-    <button class="nav-btn" onclick="showPublic('ranks')">🏅 الرتب</button>
+
     <button class="nav-btn" onclick="showPublic('certs')">🎓 شهادات</button>
     <button class="nav-btn" onclick="showPublic('report')">📊 تقرير</button>
     <button class="nav-btn primary" onclick="openLogin()" id="login-btn">🔑 دخول</button>
@@ -190,7 +190,7 @@ tbody tr:last-child td{border-bottom:none}
   <div id="pub-home">
     <div class="hero">
       <h1>بوابة <span>LSPD</span> الرسمية</h1>
-      <p>نظام متكامل • تقديم • نقل • شهادات • تقارير • رتب</p>
+      <p>نظام متكامل • تقديم • نقل • شهادات • تقارير</p>
       <div class="grid">
         <div class="card" onclick="showPublic('apply')" style="cursor:pointer"><div class="card-icon">📋</div><h3>تقديم / نقل</h3><p>تقديم طلب انضمام أو نقل داخلي</p></div>
         <div class="card"><div class="card-icon">📊</div><h3>تقديم تقرير</h3><p>رفع تقرير عام بدون تسجيل</p></div>
@@ -202,7 +202,7 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <div id="pub-ann" class="hidden"><div class="section-title">📢 الإعلانات</div><div id="pub-ann-list"></div></div>
   <div id="pub-apply" class="hidden"><div class="section-title">📋 تقديم</div><div id="pub-apply-content"></div></div>
-  <div id="pub-ranks" class="hidden"><div class="section-title">🏅 الرتب</div><div id="pub-ranks-list"></div></div>
+
   <div id="pub-certs" class="hidden"><div class="section-title">🎓 الشهادات الصادرة</div><div id="pub-certs-list"></div></div>
   <div id="pub-report" class="hidden"><div class="section-title">📊 تقديم تقرير عام</div><div id="pub-report-content"></div></div>
 </div>
@@ -340,7 +340,6 @@ function showPublic(p){
   const el=document.getElementById('pub-'+p);if(el)el.classList.remove('hidden')
   if(p==='home'||p==='ann')loadAnnouncements()
   if(p==='apply')renderPublicApply()
-  if(p==='ranks')loadRanks()
   if(p==='certs')loadPublicCerts()
   if(p==='report')renderPublicReport()
 }
