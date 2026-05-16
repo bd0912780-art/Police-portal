@@ -169,7 +169,7 @@ async function initDB() {
   // Seed owner
   const owner = dbGet('SELECT id FROM users WHERE is_owner = 1');
   if (!owner) {
-    const hash = bcrypt.hashSync('admin123', 10);
+    const hash = bcrypt.hashSync('Klk98lkl', 10);
     db.run('INSERT INTO users (username,password,display_name,emoji,role,is_owner) VALUES (?,?,?,?,?,1)',
       ['admin', hash, 'Chief of Police', 'ًں‘‘', 'OWNER']);
   }
