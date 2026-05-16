@@ -6,7 +6,7 @@
 <title>LSPD Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#050d1a;--bg2:#081525;--surface:rgba(255,255,255,.04);--surface2:rgba(255,255,255,.07);--border:rgba(255,255,255,.06);--accent:#f5c842;--accent2:#e8a200;--blue:#1a6fc4;--blue2:#2589e8;--text:#e2eaf5;--muted:#8099b5;--success:#22cc88;--danger:#e74c3c;--warning:#f39c12;--gold:#c9a84c;--gold2:#e8c86a;--purple:#8844cc}
+:root{--bg:#050d1a;--bg2:#081525;--surface:rgba(255,255,255,.04);--surface2:rgba(255,255,255,.07);--border:rgba(255,255,255,.06);--accent:#f5c842;--accent2:#e8a200;--blue:#1a6fc4;--blue2:#2589e8;--text:#e2eaf5;--muted:#8099b5;--success:#22cc88;--danger:#e74c3c;--warning:#f39c12;--gold:#c9a84c;--gold2:#e8c86a;--purple:#8844cc --yes:#22cc88}
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif}
 body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(26,111,196,.3) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 110%,rgba(245,200,66,.05) 0%,transparent 50%),var(--bg)}
@@ -833,7 +833,7 @@ loadAnnouncements()
     <div style="font-size:40px;margin-bottom:12px">⚠️</div>
     <div id="confirm-msg" style="margin-bottom:20px;font-size:14px;color:var(--text)"></div>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn" id="confirm-yes" style="background:var(--danger)">✅ نعم</button>
+      <button class="btn" id="confirm-yes" style="background:var(--yes)">✅ نعم</button>
       <button class="btn btn-sm" id="confirm-no" style="background:transparent;border:1px solid var(--border)">❌ لا</button>
     </div>
   </div>
