@@ -5,6 +5,106 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { Client, GatewayIntentBits } = require('discord.js');
+const { createCanvas, registerFont } = require('canvas');
+
+/* ─── CERTIFICATE IMAGE RENDERER ─── */
+const certFontPath = path.join(__dirname, 'public');
+// Try to register Cairo font, fallback silently
+try { registerFont(path.join(certFontPath, 'Cairo-Regular.ttf'), { family:'Cairo' }); registerFont(path.join(certFontPath, 'Cairo-Bold.ttf'), { family:'Cairo', weight:'bold' }); } catch(e) {}
+function renderCertImage(c) {
+  const w=700, h=370; const canvas=createCanvas(w,h); const ctx=canvas.getContext('2d');
+  const font = (s,w='normal') => `${s}px ${w==='bold'?"Cairo,'Arial'":"Cairo,'Arial'"}`;
+  const gold='#c9a84c', dark='#0d2247', light='#fff9f0', muted='#5a6a7a', white='#ffffff';
+
+  // Background
+  ctx.fillStyle=light; ctx.fillRect(0,0,w,h);
+  // Border
+  ctx.strokeStyle=gold; ctx.lineWidth=4; ctx.strokeRect(12,12,w-24,h-24);
+  ctx.lineWidth=2; ctx.strokeRect(18,18,w-36,h-36);
+
+  // Corner decorations
+  const drawCorner=(x,y,d1,d2)=>{ ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+d1,y+d2*0); ctx.moveTo(x,y); ctx.lineTo(x+d1*0,y+d2); ctx.strokeStyle=gold; ctx.lineWidth=2; ctx.stroke(); };
+  drawCorner(22,22,24,0); drawCorner(22,22,0,24);
+  drawCorner(w-22,22,-24,0); drawCorner(w-22,22,0,24);
+  drawCorner(22,h-22,24,0); drawCorner(22,h-22,0,-24);
+  drawCorner(w-22,h-22,-24,0); drawCorner(w-22,h-22,0,-24);
+
+  // Title
+  ctx.fillStyle='#1a3a5c'; ctx.font=font(16,'bold'); ctx.textAlign='center';
+  const titles={'PROMOTION':'CERTIFICATE OF PROMOTION','TRAINING':'CERTIFICATE OF TRAINING','EXCELLENCE':'CERTIFICATE OF EXCELLENCE','GRADUATION':'CERTIFICATE OF GRADUATION'};
+  ctx.fillText(titles[c.cert_type]||'CERTIFICATE', w/2, 62);
+
+  // Department
+  ctx.fillStyle='#8a7a4a'; ctx.font=font(10); ctx.fillText('LSPD — LOS SANTOS POLICE DEPARTMENT', w/2, 82);
+
+  // Separator
+  ctx.strokeStyle=gold; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(60,92); ctx.lineTo(w-60,92); ctx.stroke();
+
+  // Star
+  ctx.font=font(28); ctx.fillStyle=gold; ctx.fillText('⭐', w/2, 128);
+
+  // Separator
+  ctx.beginPath(); ctx.moveTo(60,138); ctx.lineTo(w-60,138); ctx.stroke();
+
+  // "THIS CERTIFIES THAT"
+  ctx.fillStyle=muted; ctx.font=font(9); ctx.fillText('THIS CERTIFIES THAT', w/2, 158);
+
+  // Officer Name
+  ctx.fillStyle='#1a3a5c'; ctx.font=font(28,'bold'); ctx.fillText(c.officer_name.toUpperCase(), w/2, 194);
+
+  // Awarded rank
+  ctx.fillStyle=muted; ctx.font=font(10); ctx.fillText('has been awarded the rank of', w/2, 216);
+  ctx.fillStyle=gold; ctx.font=font(22,'bold'); ctx.fillText(c.rank_name, w/2, 247);
+
+  // Description
+  ctx.fillStyle=muted; ctx.font=font(9); ctx.textAlign='center';
+  ctx.fillText('In recognition of outstanding performance and dedication', w/2, 274);
+  ctx.fillText('to the Los Santos Police Department.', w/2, 288);
+
+  // Footer separator
+  ctx.strokeStyle='#e0d5b8'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(40,300); ctx.lineTo(w-40,300); ctx.stroke();
+
+  // Crown
+  ctx.font=font(20); ctx.fillStyle=gold; ctx.textAlign='center';
+  ctx.fillText('👑', w/2, 328);
+
+  // Date
+  ctx.fillStyle=muted; ctx.font=font(8); ctx.textAlign='left';
+  ctx.fillText(`Awarded on: ${c.issue_date||'—'}`, 50, 338);
+  ctx.fillStyle='#8a7a4a'; ctx.font=font(7);
+  ctx.fillText(`ID: ${c.id||'—'}`, 50, 350);
+
+  // Signature
+  ctx.textAlign='right'; ctx.fillStyle=muted; ctx.font=font(8);
+  ctx.fillText('Authorized by', w-50, 328);
+  ctx.fillStyle='#1a3a5c'; ctx.font=font(13,'bold');
+  ctx.fillText(c.issued_name||'Chief of Police', w-50, 348);
+
+  return canvas.toBuffer('image/png');
+}
+
+let botClient = null;
+let botGuildId = '';
+async function initBot() {
+  if (botClient) { try { botClient.destroy(); } catch {} botClient = null; }
+  const token = dbGet('SELECT value FROM settings WHERE key=?', ['bot_token']);
+  const bg = dbGet('SELECT value FROM settings WHERE key=?', ['guild_id']);
+  botGuildId = bg ? bg.value : '';
+  if (!token || !token.value) return;
+  botClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+  botClient.on('ready', () => console.log('Bot online:', botClient.user.tag));
+  try { await botClient.login(token.value); } catch(e) { console.error('Bot login fail:', e.message); botClient = null; }
+}
+async function sendDiscordDM(tag, content) {
+  if (!botClient || !botGuildId) return;
+  const guild = botClient.guilds.cache.get(botGuildId);
+  if (!guild) { console.error('Bot: guild not found'); return; }
+  try { await guild.members.fetch(); } catch {}
+  const member = guild.members.cache.find(m => m.user.tag === tag || m.user.username === tag || m.user.displayName === tag);
+  if (!member) { console.error('Bot: member not found:', tag); return; }
+  try { await member.send(content); console.log('Bot: DM sent to', tag); } catch(e) { console.error('Bot: DM fail:', e.message); }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -305,7 +405,26 @@ app.get('/api/announcements', (req, res) => {
 
 async function sendWebhook(url, payload) {
   if (!url) return;
-  try { const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) }); if (!r.ok) console.error('Webhook fail:', r.status); } catch(e) { console.error('Webhook err:', e.message); }
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) console.error('Webhook failed:', res.status, await res.text().catch(()=>''));
+  } catch (e) {
+    console.error('Webhook error:', e.message);
+  }
+}
+async function sendWebhookCert(url, content, imgBuffer) {
+  if (!url || !imgBuffer) return;
+  try {
+    const form = new FormData();
+    form.append('file', new Blob([imgBuffer], { type:'image/png' }), 'certificate.png');
+    form.append('payload_json', JSON.stringify({ content, embeds:[{ image:{ url:'attachment://certificate.png' }, color:0xc9a84c }] }));
+    const res = await fetch(url, { method:'POST', body:form });
+    if (!res.ok) console.error('Webhook cert fail:', res.status);
+  } catch(e) { console.error('Webhook cert err:', e.message); }
 }
 function getWebhookUrl(key) { const r = dbGet('SELECT value FROM settings WHERE key=?', [key]); return r ? r.value : ''; }
 
@@ -346,6 +465,7 @@ app.put('/api/settings', auth, (req, res) => {
   if (req.user.role === 'FTO CHIEF' && key !== 'applications_open') return res.status(403).json({ error: 'Forbidden' });
   dbRun('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', [key, value]);
   logAction('update_settings', req.user, `${key}=${value}`);
+  if (key === 'bot_token' || key === 'guild_id') initBot();
   res.json({ success: true });
 });
 
@@ -429,6 +549,9 @@ app.put('/api/applications/:id/status', auth, (req, res) => {
   logAction('update_application', req.user, `${app.name} -> ${status}`);
   const wh = getWebhookUrl('webhook_applications');
   if (wh) sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:status==='accepted'?'✅ قبول تقديم':'❌ رفض تقديم', color:status==='accepted'?0x22cc88:0xe74c3c, fields:[{name:'الاسم',value:app.name,inline:true},{name:'ديسكورد',value:app.discord,inline:true},{name:'نوع التقديم',value:app.type==='transfer'?'نقل':'انضمام',inline:true},{name:'بواسطة',value:req.user.display_name,inline:true}], timestamp:new Date().toISOString() }] });
+  const statusMsg = status==='accepted'?'✅ تم قبول طلبك في LSPD':'❌ للأسف تم رفض طلبك في LSPD';
+  const typeMsg = app.type==='transfer'?'نقل':'انضمام';
+  sendDiscordDM(app.discord, `**${statusMsg}**\n\`\`\`الاسم: ${app.name}\nالنوع: ${typeMsg}\`\`\`\nشكراً لتواصلك معنا.`);
   res.json({ success: true });
 });
 
@@ -507,8 +630,12 @@ app.post('/api/certificates', auth, (req, res) => {
     [officer_name, cert_type, rank_name, issue_date || new Date().toISOString().slice(0,10), req.user.id, req.user.display_name]);
   logAction('create_certificate', req.user, `${officer_name} - ${cert_type}`);
   const wh = getWebhookUrl('webhook_certificates');
-  const typeNames = { PROMOTION:'ترقية', TRAINING:'تدريب', EXCELLENCE:'تميز', GRADUATION:'تخرج' };
-  if (wh) sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:'🎓 شهادة جديدة', color:0xc9a84c, fields:[{name:'الضابط',value:officer_name,inline:true},{name:'النوع',value:typeNames[cert_type]||cert_type,inline:true},{name:'الرتبة/الدورة',value:rank_name,inline:true},{name:'التاريخ',value:issue_date||'—',inline:true},{name:'المصدر',value:req.user.display_name,inline:true}], footer:{text:'شهادة #'+result.lastInsertRowid}, timestamp:new Date().toISOString() }] });
+  if (wh) {
+    const newCert = dbGet('SELECT * FROM certificates WHERE id=?', [result.lastInsertRowid]);
+    if (newCert) {
+      try { const img = renderCertImage(newCert); sendWebhookCert(wh, `🎓 **شهادة جديدة** — ${officer_name}`, img); } catch(e) { console.error('Cert image fail:', e.message); sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:'🎓 شهادة جديدة', color:0xc9a84c, fields:[{name:'الضابط',value:officer_name,inline:true},{name:'النوع',value:({PROMOTION:'ترقية',TRAINING:'تدريب',EXCELLENCE:'تميز',GRADUATION:'تخرج'})[cert_type]||cert_type,inline:true},{name:'الرتبة',value:rank_name,inline:true},{name:'التاريخ',value:issue_date||'—',inline:true},{name:'المصدر',value:req.user.display_name,inline:true}], footer:{text:'شهادة #'+result.lastInsertRowid} }] }); }
+    }
+  }
   res.json({ success: true });
 });
 
@@ -610,6 +737,7 @@ app.get('*', (req, res) => {
 });
 
 initDB().then(() => {
+  initBot();
   const os = require('os');
   const ifaces = os.networkInterfaces();
   const ip = Object.values(ifaces).flat().find(i => i.family === 'IPv4' && !i.internal)?.address || 'localhost';
