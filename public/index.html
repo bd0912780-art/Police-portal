@@ -764,9 +764,15 @@ function renderDashSettings(){
     {key:'webhook_applications',icon:'📋',label:'ويب هوك التقديمات',desc:'رابط Webhook للتقديمات (يُرسل عند قبول/رفض تقديم)'},
     {key:'webhook_certificates',icon:'🎓',label:'ويب هوك الشهادات',desc:'رابط Webhook للشهادات (يُرسل عند إصدار شهادة)'}
   ]
+  const botItems=[
+    {key:'bot_token',icon:'🤖',label:'توكن البوت',desc:'Discord Bot Token (مطلوب لإرسال رسائل خاصة)',type:'password',placeholder:'أدخل توكن البوت'},
+    {key:'guild_id',icon:'🆔',label:'معرف السيرفر',desc:'Discord Guild ID',type:'text',placeholder:'أدخل ID السيرفر'}
+  ]
   document.getElementById('dash-settings-list').innerHTML=items.map(i=>{const o=s[i.key]!=='false';return `<div class="setting-item"><div class="setting-info"><h4>${i.icon} ${i.label}</h4><p>${i.desc}</p></div><button class="toggle-btn ${o?'on':'off'}" onclick="toggleSetting('${i.key}')">${o?'✅ مفتوح':'❌ مغلق'}</button></div>`}).join('')+
     `<div class="section-title" style="margin-top:24px;font-size:16px">🔗 روابط Webhook لديسكورد</div>`+
-    whItems.map(i=>`<div class="setting-item" style="flex-wrap:wrap"><div class="setting-info" style="flex:1;min-width:200px"><h4>${i.icon} ${i.label}</h4><p>${i.desc}</p></div><div style="display:flex;gap:6px;flex:1;min-width:250px"><input type="url" id="wh-${i.key}" value="${s[i.key]||''}" placeholder="https://discord.com/api/webhooks/..." style="flex:1;border:1px solid rgba(255,255,255,.08);outline:none;background:#071320;color:white;padding:8px 10px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:12px"><button class="btn-sm" onclick="saveWebhook('${i.key}')" style="white-space:nowrap">💾 حفظ</button></div></div>`).join('')
+    whItems.map(i=>`<div class="setting-item" style="flex-wrap:wrap"><div class="setting-info" style="flex:1;min-width:200px"><h4>${i.icon} ${i.label}</h4><p>${i.desc}</p></div><div style="display:flex;gap:6px;flex:1;min-width:250px"><input type="url" id="wh-${i.key}" value="${s[i.key]||''}" placeholder="https://discord.com/api/webhooks/..." style="flex:1;border:1px solid rgba(255,255,255,.08);outline:none;background:#071320;color:white;padding:8px 10px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:12px"><button class="btn-sm" onclick="saveWebhook('${i.key}')" style="white-space:nowrap">💾 حفظ</button></div></div>`).join('')+
+    `<div class="section-title" style="margin-top:24px;font-size:16px">🤖 إعدادات البوت (لإرسال رسائل خاصة)</div>`+
+    botItems.map(i=>`<div class="setting-item" style="flex-wrap:wrap"><div class="setting-info" style="flex:1;min-width:200px"><h4>${i.icon} ${i.label}</h4><p>${i.desc}</p></div><div style="display:flex;gap:6px;flex:1;min-width:250px"><input type="${i.type}" id="wh-${i.key}" value="${s[i.key]||''}" placeholder="${i.placeholder}" style="flex:1;border:1px solid rgba(255,255,255,.08);outline:none;background:#071320;color:white;padding:8px 10px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:12px"><button class="btn-sm" onclick="saveWebhook('${i.key}')" style="white-space:nowrap">💾 حفظ</button></div></div>`).join('')
 }
 async function toggleSetting(k){
   const s=window._settings||{};const v=s[k]==='false'?'true':'false'
