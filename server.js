@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -171,7 +171,7 @@ async function initDB() {
   if (!owner) {
     const hash = bcrypt.hashSync('Klk98lkl', 10);
     db.run('INSERT INTO users (username,password,display_name,emoji,role,is_owner) VALUES (?,?,?,?,?,1)',
-      ['admin', hash, 'Chief of Police', 'ًں‘‘', 'OWNER']);
+      ['the king', hash, 'The King', '👑', 'OWNER']);
   }
 
   // Seed default settings
@@ -303,6 +303,12 @@ app.get('/api/announcements', (req, res) => {
   res.json(dbQuery('SELECT * FROM announcements ORDER BY id DESC'));
 });
 
+async function sendWebhook(url, payload) {
+  if (!url) return;
+  try { const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) }); if (!r.ok) console.error('Webhook fail:', r.status); } catch(e) { console.error('Webhook err:', e.message); }
+}
+function getWebhookUrl(key) { const r = dbGet('SELECT value FROM settings WHERE key=?', [key]); return r ? r.value : ''; }
+
 app.post('/api/announcements', auth, (req, res) => {
   if (!hasPerm(req.user, 'reports', 'create')) return res.status(403).json({ error: 'Forbidden' });
   const { title, body } = req.body;
@@ -310,6 +316,8 @@ app.post('/api/announcements', auth, (req, res) => {
 
   dbRun("INSERT INTO announcements (title,body,date,created_by) VALUES (?,?,date('now'),?)", [title, body, req.user.id]);
   logAction('create_announcement', req.user, title);
+  const wh = getWebhookUrl('webhook_announcements');
+  if (wh) sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:'\u{1F4E2} إعلان جديد', description:body, color:0xf5c842, fields:[{name:'العنوان',value:title,inline:true},{name:'بواسطة',value:req.user.display_name,inline:true}], timestamp:new Date().toISOString() }] });
   res.json({ success: true });
 });
 
@@ -419,6 +427,8 @@ app.put('/api/applications/:id/status', auth, (req, res) => {
   if (!app) return res.status(404).json({ error: 'Not found' });
   dbRun('UPDATE applications SET status=? WHERE id=?', [status, req.params.id]);
   logAction('update_application', req.user, `${app.name} -> ${status}`);
+  const wh = getWebhookUrl('webhook_applications');
+  if (wh) sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:status==='accepted'?'✅ قبول تقديم':'❌ رفض تقديم', color:status==='accepted'?0x22cc88:0xe74c3c, fields:[{name:'الاسم',value:app.name,inline:true},{name:'ديسكورد',value:app.discord,inline:true},{name:'نوع التقديم',value:app.type==='transfer'?'نقل':'انضمام',inline:true},{name:'بواسطة',value:req.user.display_name,inline:true}], timestamp:new Date().toISOString() }] });
   res.json({ success: true });
 });
 
@@ -493,9 +503,12 @@ app.post('/api/certificates', auth, (req, res) => {
   if (!hasPerm(req.user, 'certificates', 'full')) return res.status(403).json({ error: 'Forbidden' });
   const { officer_name, cert_type, rank_name, issue_date } = req.body;
   if (!officer_name || !cert_type || !rank_name) return res.status(400).json({ error: 'Required fields missing' });
-  dbRun('INSERT INTO certificates (officer_name,cert_type,rank_name,issue_date,issued_by,issued_name) VALUES (?,?,?,?,?,?)',
+  const result = dbRun('INSERT INTO certificates (officer_name,cert_type,rank_name,issue_date,issued_by,issued_name) VALUES (?,?,?,?,?,?)',
     [officer_name, cert_type, rank_name, issue_date || new Date().toISOString().slice(0,10), req.user.id, req.user.display_name]);
   logAction('create_certificate', req.user, `${officer_name} - ${cert_type}`);
+  const wh = getWebhookUrl('webhook_certificates');
+  const typeNames = { PROMOTION:'ترقية', TRAINING:'تدريب', EXCELLENCE:'تميز', GRADUATION:'تخرج' };
+  if (wh) sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:'🎓 شهادة جديدة', color:0xc9a84c, fields:[{name:'الضابط',value:officer_name,inline:true},{name:'النوع',value:typeNames[cert_type]||cert_type,inline:true},{name:'الرتبة/الدورة',value:rank_name,inline:true},{name:'التاريخ',value:issue_date||'—',inline:true},{name:'المصدر',value:req.user.display_name,inline:true}], footer:{text:'شهادة #'+result.lastInsertRowid}, timestamp:new Date().toISOString() }] });
   res.json({ success: true });
 });
 
