@@ -549,7 +549,7 @@ app.put('/api/applications/:id/status', auth, (req, res) => {
   logAction('update_application', req.user, `${app.name} -> ${status}`);
   const wh = getWebhookUrl('webhook_applications');
   if (wh) sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:status==='accepted'?'✅ قبول تقديم':'❌ رفض تقديم', color:status==='accepted'?0x22cc88:0xe74c3c, fields:[{name:'الاسم',value:app.name,inline:true},{name:'ديسكورد',value:app.discord,inline:true},{name:'نوع التقديم',value:app.type==='transfer'?'نقل':'انضمام',inline:true},{name:'بواسطة',value:req.user.display_name,inline:true}], timestamp:new Date().toISOString() }] });
-  const statusMsg = status==='accepted'?'✅ تم قبول طلبك في LSPD':'❌ للأسف تم رفض طلبك في LSPD';
+  const statusMsg = status==='accepted'?'✅  تم قبول طلبك في  FreeLSPD':'❌ للأسف تم رفض طلبك في LSPD';
   const typeMsg = app.type==='transfer'?'نقل':'انضمام';
   sendDiscordDM(app.discord, `**${statusMsg}**\n\`\`\`الاسم: ${app.name}\nالنوع: ${typeMsg}\`\`\`\nشكراً لتواصلك معنا.`);
   res.json({ success: true });
