@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -108,6 +108,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'lspd-portal-secret-key-change-in-production';
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'data.db');
 
+app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -413,29 +414,24 @@ async function sendWebhook(url, payload) {
     console.error('Webhook error:', e.message);
   }
 }
-async function sendWebhookCert(url, content, imgBuffer) {
-  if (!url || !imgBuffer) return;
+async function sendWebhookCert(url, content, imgUrl) {
+  if (!url) return;
   try {
-    const buf = Buffer.from(imgBuffer);
-    const boundary = '----' + Math.random().toString(36).slice(2);
-    const payload = JSON.stringify({ content, embeds:[{ image:{ url:'attachment://certificate.png' }, color:0xc9a84c }] });
-    const parts = [
-      `--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\nContent-Type: application/json\r\n\r\n${payload}\r\n`,
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="certificate.png"\r\nContent-Type: image/png\r\n\r\n`,
-      buf,
-      `\r\n--${boundary}--\r\n`
-    ];
-    const chunks = [];
-    for (const p of parts) {
-      if (typeof p === 'string') chunks.push(Buffer.from(p, 'utf8'));
-      else chunks.push(p);
-    }
-    const body = Buffer.concat(chunks);
-    const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':`multipart/form-data; boundary=${boundary}` }, body });
-    if (res.ok) console.log('Cert webhook sent OK');
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ content, embeds:[{ image:{ url:imgUrl }, color:0xc9a84c }] })
+    });
+    if (res.ok) console.log('Cert webhook sent');
     else console.error('Cert webhook fail:', res.status, await res.text().catch(()=>''));
   } catch(e) { console.error('Cert webhook err:', e.message); }
 }
+app.get('/api/certificates/:id/image', (req, res) => {
+  const cert = dbGet('SELECT * FROM certificates WHERE id=?', [req.params.id]);
+  if (!cert) return res.status(404).json({ error:'Not found' });
+  try { const img = renderCertImage(cert); res.set('Content-Type','image/png'); res.send(img); }
+  catch(e) { res.status(500).json({ error:e.message }); }
+});
 function getWebhookUrl(key) { const r = dbGet('SELECT value FROM settings WHERE key=?', [key]); return r ? r.value : ''; }
 
 app.post('/api/announcements', auth, (req, res) => {
@@ -650,11 +646,9 @@ app.post('/api/certificates', auth, async (req, res) => {
   logAction('create_certificate', req.user, `${officer_name} - ${cert_type}`);
   const wh = getWebhookUrl('webhook_certificates');
   if (wh) {
-    const newCert = dbGet('SELECT * FROM certificates WHERE id=?', [result.lastInsertRowid]);
-    if (newCert) {
-      try { const img = renderCertImage(newCert); await sendWebhookCert(wh, `🎓 **شهادة جديدة** — ${officer_name}`, img); }
-      catch(e) { console.error('Cert webhook fail:', e.message); await sendWebhook(wh, { username:'LSPD Portal', embeds:[{ title:'🎓 شهادة جديدة', color:0xc9a84c, fields:[{name:'الضابط',value:officer_name,inline:true},{name:'النوع',value:({PROMOTION:'ترقية',TRAINING:'تدريب',EXCELLENCE:'تميز',GRADUATION:'تخرج'})[cert_type]||cert_type,inline:true},{name:'الرتبة',value:rank_name,inline:true},{name:'التاريخ',value:issue_date||'—',inline:true},{name:'المصدر',value:req.user.display_name,inline:true}], footer:{text:'شهادة #'+result.lastInsertRowid} }] }); }
-    }
+    const base = `${req.protocol}://${req.get('host')}`;
+    const imgUrl = `${base}/api/certificates/${result.lastInsertRowid}/image`;
+    sendWebhookCert(wh, `🎓 **شهادة جديدة** — ${officer_name}`, imgUrl);
   }
   res.json({ success: true });
 });
