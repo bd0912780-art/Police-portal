@@ -387,7 +387,7 @@ async function renderPublicApplyInner(type){
       :`<div class="field"><label>${q.text}</label><input type="text" id="q-${type}-${q.id}" placeholder="إجابتك..."></div>`).join('')
     fb.innerHTML=`
       <div class="form-row"><div class="field"><label>الاسم الكامل</label><input type="text" id="${type}-name" placeholder="الاسم"></div>
-      <div class="field"><label>الديسكورد</label><input type="text" id="${type}-discord" placeholder="user#0000"></div></div>
+      <div class="field"><label>الديسكورد</label><input type="text" id="${type}-discord" placeholder="user الاسم في الدسكورد "></div></div>
       ${type==='transfer'?`<div class="field"><label>القسم الحالي</label><input type="text" id="transfer-current" placeholder="القسم الحالي"></div>`:''}
       ${qHtml}
       <button class="btn" onclick="submitPublicApp()">📩 إرسال</button>`
