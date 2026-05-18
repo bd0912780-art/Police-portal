@@ -132,7 +132,7 @@ const upload = multer({
   }
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PERMISSIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const PERM = {
   certificates: { OWNER:'full','FULL ACCESS':'full','FTO CHIEF':'full','FTO MEMBER':'full','IA CHIEF':'full','IA MEMBER':'full','WING COMMANDER':'full','WINGS':'full','APPLICANT VIEWER':'full','VISITOR':'full' },
   reports:      { OWNER:'full','FULL ACCESS':'full','FTO CHIEF':'full','FTO MEMBER':'create','IA CHIEF':'full','IA MEMBER':'full','WING COMMANDER':'full','WINGS':'full','APPLICANT VIEWER':'none','VISITOR':'none' },
@@ -152,7 +152,7 @@ function hasPerm(user, feature, level = 'view') {
   return false;
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DATABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 let db;
 
 function saveDB() {
@@ -347,14 +347,14 @@ async function initDB() {
   const annCount = dbGet('SELECT COUNT(*) as c FROM announcements');
   if (annCount.c === 0) {
     db.run('INSERT INTO announcements (title,body,date) VALUES (?,?,?)',
-      ['ظپطھط­ ط¨ط§ط¨ ط§ظ„طھظ‚ط¯ظٹظ… ط§ظ„ط±ط³ظ…ظٹ', 'ظٹظڈط¹ظ„ظ† ظ‚ط³ظ… ط§ظ„ظ…ظˆط§ط±ط¯ ط§ظ„ط¨ط´ط±ظٹط© ظپظٹ ط´ط±ط·ط© ظ„ظˆط³ ط³ط§ظ†طھظˆط³ ط¹ظ† ظپطھط­ ط¨ط§ط¨ ط§ظ„طھظ‚ط¯ظٹظ… ط§ظ„ط±ط³ظ…ظٹ ظ„ظ„ظ…طھظ‚ط¯ظ…ظٹظ† ط§ظ„ط¬ط¯ط¯.', '2025-01-01']);
+      ['test']);
   }
 
   saveDB();
   console.log('âœ… Database initialized');
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MIDDLEWARE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -373,7 +373,7 @@ function logAction(action, user, details = '') {
     [action, user?.id || null, user?.display_name || 'system', details]);
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
@@ -463,7 +463,7 @@ app.delete('/api/users/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ANNOUNCEMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/announcements', (req, res) => {
   res.json(dbQuery('SELECT * FROM announcements ORDER BY id DESC'));
 });
@@ -522,7 +522,7 @@ app.delete('/api/announcements/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ APPLICATIONS & TRANSFERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/settings', (req, res) => {
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   const s = dbQuery('SELECT * FROM settings');
@@ -551,7 +551,7 @@ app.put('/api/settings', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ QUESTIONS (stored in settings) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/questions/:type', (req, res) => {
   const setting = dbGet('SELECT value FROM settings WHERE key=?', ['questions_' + req.params.type]);
   res.json(setting ? JSON.parse(setting.value) : []);
@@ -565,7 +565,7 @@ app.put('/api/questions/:type', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PUBLIC REPORTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/public-reports', auth, (req, res) => {
   if (req.user.role !== 'OWNER' && req.user.role !== 'FULL ACCESS' && !req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   res.json(dbQuery('SELECT * FROM public_reports ORDER BY id DESC'));
@@ -585,7 +585,7 @@ app.delete('/api/public-reports/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ STATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/stats/members', auth, (req, res) => {
   if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
   const stats = dbQuery('SELECT role, COUNT(*) as count FROM users WHERE is_owner=0 GROUP BY role');
@@ -631,7 +631,7 @@ app.put('/api/applications/:id/status', auth, (req, res) => {
   logAction('update_application', req.user, `${app.name} -> ${status}`);
   const wh = getWebhookUrl('webhook_applications');
   if (wh) sendWebhook(wh, { username:'FreeDom LSPD Portal', embeds:[{ title:status==='accepted'?'✅ قبول تقديم':'❌ رفض تقديم', color:status==='accepted'?0x22cc88:0xe74c3c, fields:[{name:'الاسم',value:app.name,inline:true},{name:'ديسكورد',value:app.discord,inline:true},{name:'نوع التقديم',value:app.type==='transfer'?'نقل':'انضمام',inline:true},{name:'بواسطة',value:req.user.display_name,inline:true}], timestamp:new Date().toISOString() }] });
-  const statusMsg = status==='accepted'?'✅  تم قبول طلبك في  FreeDom LSPD':'❌ للأسف تم رفض طلبك في FreeDom LSPD';
+  const statusMsg = status==='accepted'?'✅  يرجى مراجعة روم التقديم لتحديد موعد الاختبار تم قبول طلبك في  FreeDom LSPD':'❌ للأسف تم رفض طلبك في FreeDom LSPD';
   const typeMsg = app.type==='transfer'?'نقل':'انضمام';
   sendDiscordDM(app.discord, `**${statusMsg}**\n\`\`\`الاسم: ${app.name}\nالنوع: ${typeMsg}\`\`\`\nشكراً لتواصلك معنا.`);
   res.json({ success: true });
@@ -646,7 +646,7 @@ app.delete('/api/applications/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ REPORTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/reports', auth, (req, res) => {
   if (!hasPerm(req.user, 'reports', 'view')) return res.status(403).json({ error: 'Forbidden' });
   res.json(dbQuery('SELECT r.*, u.display_name as author_name FROM reports r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.id DESC'));
@@ -681,7 +681,7 @@ app.delete('/api/reports/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ LOGS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/logs', auth, (req, res) => {
   if (!hasPerm(req.user, 'logs', 'full')) return res.status(403).json({ error: 'Forbidden' });
   res.json(dbQuery('SELECT * FROM logs ORDER BY id DESC LIMIT 200'));
@@ -694,7 +694,7 @@ app.delete('/api/logs', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CERTIFICATES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/certificates', (req, res) => {
   const publicOnly = req.query.public === 'true';
   if (publicOnly) {
@@ -729,7 +729,7 @@ app.delete('/api/certificates/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DIVISION MEMBERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 function canManageDivision(user, division) {
   if (user.is_owner || user.role === 'FULL ACCESS') return true;
   if (user.role === 'FTO CHIEF' && division === 'FTO') return true;
@@ -968,25 +968,25 @@ app.get('/api/stats/certificates-by-month', auth, (req, res) => {
   res.json(data);
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ RANKS (public) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const RANKS_DATA = {
-  'OWNER':            { emoji:'ًں‘‘', level:0, permissions:['ظƒظ„ ط§ظ„طµظ„ط§ط­ظٹط§طھ'] },
-  'FULL ACCESS':      { emoji:'ًں”µ', level:1, permissions:['ط´ظ‡ط§ط¯ط§طھ','طھظ‚ط§ط±ظٹط±','طھظ‚ط¯ظٹظ…ط§طھ','ط³ط¬ظ„ط§طھ'] },
-  'FTO CHIEF':        { emoji:'ًںں،', level:2, permissions:['ط´ظ‡ط§ط¯ط§طھ','طھظ‚ط§ط±ظٹط±','طھظ‚ط¯ظٹظ…ط§طھ'] },
-  'FTO MEMBER':       { emoji:'ًںں¢', level:3, permissions:['ط´ظ‡ط§ط¯ط§طھ','ط¥ظ†ط´ط§ط، طھظ‚ط§ط±ظٹط±'] },
-  'IA CHIEF':         { emoji:'ًں”´', level:4, permissions:['ط´ظ‡ط§ط¯ط§طھ','طھظ‚ط§ط±ظٹط±','طھظ‚ط¯ظٹظ…ط§طھ'] },
-  'IA MEMBER':        { emoji:'ًںں ', level:5, permissions:['ط´ظ‡ط§ط¯ط§طھ','طھظ‚ط§ط±ظٹط±'] },
-  'WING COMMANDER':   { emoji:'ًںں£', level:6, permissions:['ط´ظ‡ط§ط¯ط§طھ','طھظ‚ط§ط±ظٹط±','طھظ‚ط¯ظٹظ…ط§طھ'] },
-  'WINGS':            { emoji:'âڑھ', level:7, permissions:['ط´ظ‡ط§ط¯ط§طھ','طھظ‚ط§ط±ظٹط±'] },
-  'APPLICANT VIEWER': { emoji:'ًں‘پï¸ڈ', level:8, permissions:['ط¹ط±ط¶ ط§ظ„طھظ‚ط¯ظٹظ…ط§طھ ظپظ‚ط·'] },
-  'VISITOR':          { emoji:'ًں‘¤', level:9, permissions:['ظ„ط§ ظٹظˆط¬ط¯ طµظ„ط§ط­ظٹط§طھ'] }
+  'OWNER':            { emoji:'👑', level:0, permissions:['كل الصلاحيات'] },
+  'FULL ACCESS':      { emoji:'🔵', level:1, permissions:['شهادات','تقارير','تقديمات','سجلات'] },
+  'FTO CHIEF':        { emoji:'🟡', level:2, permissions:['شهادات','تقارير','تقديمات'] },
+  'FTO MEMBER':       { emoji:'🟢', level:3, permissions:['شهادات','إنشاء تقارير'] },
+  'IA CHIEF':         { emoji:'🔴', level:4, permissions:['شهادات','تقارير','تقديمات'] },
+  'IA MEMBER':        { emoji:'🟠', level:5, permissions:['شهادات','تقارير'] },
+  'WING COMMANDER':   { emoji:'🟣', level:6, permissions:['شهادات','تقارير','تقديمات'] },
+  'WINGS':            { emoji:'⚯', level:7, permissions:['شهادات','تقارير'] },
+  'APPLICANT VIEWER': { emoji:'👁️', level:8, permissions:['عرض التقديمات فقط'] },
+  'VISITOR':          { emoji:'👤', level:9, permissions:['لا يوجد صلاحيات'] }
 };
 
 app.get('/api/ranks', (req, res) => {
   res.json(RANKS_DATA);
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.get('/api/bot-status', (req, res) => {
   res.json({ online: !!botClient && !!botClient.user, user: botClient?.user?.tag || null, guildId: botGuildId || null, guilds: botClient?.guilds?.cache?.size || 0, hasToken: !!dbGet('SELECT value FROM settings WHERE key=?', ['bot_token'])?.value });
 });
