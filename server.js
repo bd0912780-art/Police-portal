@@ -27,7 +27,7 @@ function renderCertImage(c) {
   ctx.fillStyle='#1a3a5c'; ctx.font=font(16,'bold'); ctx.textAlign='center';
   const tls={'PROMOTION':'CERTIFICATE OF PROMOTION','TRAINING':'CERTIFICATE OF TRAINING','EXCELLENCE':'CERTIFICATE OF EXCELLENCE','GRADUATION':'CERTIFICATE OF GRADUATION'};
   ctx.fillText(tls[c.cert_type]||'CERTIFICATE', w/2, S(62));
-  ctx.fillStyle='#8a7a4a'; ctx.font=font(10); ctx.fillText('LSPD — LOS SANTOS POLICE DEPARTMENT', w/2, S(82));
+  ctx.fillStyle='#8a7a4a'; ctx.font=font(10); ctx.fillText('LSPD - LOS SANTOS POLICE DEPARTMENT', w/2, S(82));
 
   ctx.strokeStyle=gold; ctx.lineWidth=S(1); ctx.beginPath(); ctx.moveTo(S(60),S(92)); ctx.lineTo(w-S(60),S(92)); ctx.stroke();
   ctx.font=font(28); ctx.fillStyle=gold; ctx.fillText('⭐', w/2, S(128));
@@ -46,8 +46,8 @@ function renderCertImage(c) {
   ctx.font=font(20); ctx.fillStyle=gold; ctx.textAlign='center'; ctx.fillText('👑', w/2, S(328));
 
   ctx.fillStyle=muted; ctx.font=font(8); ctx.textAlign='left';
-  ctx.fillText(`Awarded on: ${c.issue_date||'—'}`, S(50), S(338));
-  ctx.fillStyle='#8a7a4a'; ctx.font=font(7); ctx.fillText(`ID: ${c.id||'—'}`, S(50), S(350));
+  ctx.fillText(`Awarded on: ${c.issue_date||'N/A'}`, S(50), S(338));
+  ctx.fillStyle='#8a7a4a'; ctx.font=font(7); ctx.fillText(`ID: ${c.id||'N/A'}`, S(50), S(350));
   ctx.textAlign='right'; ctx.fillStyle=muted; ctx.font=font(8);
   ctx.fillText('Authorized by', w-S(50), S(328));
   ctx.fillStyle='#1a3a5c'; ctx.font=font(13,'bold'); ctx.fillText(c.issued_name||'Chief of Police', w-S(50), S(348));
