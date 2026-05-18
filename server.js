@@ -68,39 +68,24 @@ async function initBot() {
   botClient.on('messageCreate', async msg => {
     if (msg.author.bot) return;
     if (!msg.content) { console.log('Bot: empty content - MessageContent intent missing?'); return; }
-    const prefix = '!leave';
+    const prefix = '!اجازة';
     if (!msg.content.startsWith(prefix)) return;
-    const raw = msg.content.slice(prefix.length).trim();
-    console.log('Bot: received:', raw);
-    const parts = raw.split(/\s+/);
-    // Format: !leave [type] [from] [to] [reason...] or !leave type:سنوية from:... to:...
-    let type='annual',from_date,to_date,reason='',discord_tag=msg.author.tag;
-    const kv = {};
-    parts.forEach(p => { const m = p.match(/^(\w+):(.+)$/); if (m) kv[m[1].toLowerCase()] = m[2]; });
-    if (kv.type || kv.from || kv.to) {
-      type = kv.type || 'annual';
-      from_date = kv.from;
-      to_date = kv.to;
-      reason = kv.reason || '';
-      discord_tag = kv.discord || msg.author.tag;
-    } else {
-      type = parts[0] || 'annual';
-      from_date = parts[1];
-      to_date = parts[2];
-      reason = parts.slice(3).filter(a => !a.startsWith('discord:')).join(' ') || '';
-      const d = parts.find(a => a.startsWith('discord:'));
-      if (d) discord_tag = d.slice(8) || msg.author.tag;
-    }
-    if (!from_date || !to_date) {
-      msg.reply('⚠️ استخدم: `!leave سنوية 2026-05-20 2026-05-22 سبب discord:اسمك`');
-      return;
-    }
+    const raw = msg.content.slice(prefix.length).trim().split(/\s+/);
+    console.log('Bot: received اجازة:', raw);
+    const days = parseInt(raw[0]);
+    if (!days || days < 1) { msg.reply('⚠️ استخدم: `!اجازة [عدد الأيام] [اسمك]`\nمثال: `!اجازة 7 أحمد`'); return; }
+    const name = raw.slice(1).join(' ') || msg.author.displayName || msg.author.username;
+    const today = new Date();
+    const from_date = today.toISOString().slice(0,10);
+    const end = new Date(today); end.setDate(end.getDate() + days);
+    const to_date = end.toISOString().slice(0,10);
+    const discord_tag = msg.author.tag;
     try {
       dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'discord',NULL)",
-        [msg.author.displayName || msg.author.username, discord_tag, type, reason, from_date, to_date]);
-      msg.reply('✅ تم تقديم طلب الإجازة بنجاح! سيتم مراجعته من قبل الإدارة.');
+        [name, discord_tag, 'annual', 'إجازة ' + days + ' يوم', from_date, to_date]);
+      msg.reply('✅ تم استلام طلب الإجازة! سيتم مراجعته من قبل المسؤولين.');
       const wh = getWebhookUrl('webhook_applications');
-      if (wh) sendWebhook(wh, { content: `📩 **طلب إجازة جديد (دسكورد)**\nالاسم: ${msg.author.displayName || msg.author.username}\nالنوع: ${type}\nمن: ${from_date}\nإلى: ${to_date}\nالسبب: ${reason || '—'}` });
+      if (wh) sendWebhook(wh, { content: `📩 **طلب إجازة جديد**\nالاسم: ${name}\nالمدة: ${days} يوم\nمن: ${from_date}\nإلى: ${to_date}` });
     } catch(e) {
       msg.reply('❌ حدث خطأ: ' + e.message);
     }
