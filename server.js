@@ -790,15 +790,21 @@ app.post('/api/certificates', auth, async (req, res) => {
     try {
       const cert = { officer_name, cert_type, rank_name, issue_date: issue_date || new Date().toISOString().slice(0,10), issued_name: req.user.display_name, id: result.lastInsertRowid };
       const imgBuffer = renderCertImage(cert);
-      const base64 = imgBuffer.toString('base64');
-      const payload = {
-        content: `🎓 **شهادة جديدة**\n👤 الضابط: **${officer_name}**\n📋 النوع: ${cert_type}\n🏅 الرتبة: ${rank_name}\n📅 التاريخ: ${issue_date || '—'}\n✨ بواسطة: ${req.user.display_name}`,
-        files: [{ name: `certificate-${result.lastInsertRowid}.png`, attachment: `data:image/png;base64,${base64}` }]
-      };
+      const fileName = `certificate-${result.lastInsertRowid}.png`;
+      const boundary = '----WebKitFormBoundary' + Date.now().toString(36);
+      const textPart = `--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ content: `🎓 **شهادة جديدة**\n👤 الضابط: **${officer_name}**\n📋 النوع: ${cert_type}\n🏅 الرتبة: ${rank_name}\n📅 التاريخ: ${issue_date || '—'}\n✨ بواسطة: ${req.user.display_name}` })}\r\n`;
+      const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="files[0]"; filename="${fileName}"\r\nContent-Type: image/png\r\n\r\n`;
+      const endPart = `\r\n--${boundary}--\r\n`;
+      const body = Buffer.concat([
+        Buffer.from(textPart, 'utf8'),
+        Buffer.from(filePart, 'utf8'),
+        imgBuffer,
+        Buffer.from(endPart, 'utf8')
+      ]);
       await fetch(wh, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+        body
       });
       console.log('Certificate image sent to webhook');
     } catch(e) { console.error('Cert webhook error:', e.message); }
