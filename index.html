@@ -1119,19 +1119,20 @@ function renderDashAccounts(){
     <div class="form-row3"><div class="field"><label>الاسم</label><input type="text" id="au-display"></div>
     <div class="field"><label>المستخدم</label><input type="text" id="au-user"></div>
     <div class="field"><label>كلمة المرور</label><input type="text" id="au-pass"></div></div>
-    <div class="field"><label>الرتبة</label><select id="au-role">
+    <div class="form-row3"><div class="field"><label>الرتبة</label><select id="au-role">
       <option value="VISITOR">VISITOR</option><option value="APPLICANT VIEWER">APPLICANT VIEWER</option>
       <option value="WINGS">WINGS</option><option value="WING COMMANDER">WING COMMANDER</option>
       <option value="IA MEMBER">IA MEMBER</option><option value="IA CHIEF">IA CHIEF</option>
       <option value="FTO MEMBER">FTO MEMBER</option><option value="FTO CHIEF">FTO CHIEF</option>
       <option value="FULL ACCESS">FULL ACCESS</option></select></div>
+    <div class="field"><label>Discord Tag</label><input type="text" id="au-discord" placeholder="user#1234"></div></div>
     <button class="btn btn-sm btn-gold" onclick="createUser()" style="width:auto">👤 إنشاء</button></div>
-    <div class="users-grid">${u.map(x=>`<div class="user-card"><div class="user-card-header"><div class="user-avatar">${x.emoji}</div><div><div class="user-card-name">${x.display_name} ${x.is_owner?'<span class="owner-badge">👑</span>':''}</div><div class="user-card-username">@${x.username} • ${x.role}</div></div></div>${x.is_owner?'<span style="color:var(--muted);font-size:11px">👑 لا يمكن تعديل المالك</span>':`<button class="action-btn delete" onclick="deleteUser(${x.id})">🗑️ حذف</button>`}</div>`).join('')}</div>`
+    <div class="users-grid">${u.map(x=>`<div class="user-card"><div class="user-card-header"><div class="user-avatar">${x.emoji}</div><div><div class="user-card-name">${x.display_name} ${x.is_owner?'<span class="owner-badge">👑</span>':''}</div><div class="user-card-username">@${x.username} • ${x.role}${x.discord_tag?' | '+x.discord_tag:''}</div></div></div>${x.is_owner?'<span style="color:var(--muted);font-size:11px">👑 لا يمكن تعديل المالك</span>':`<button class="action-btn delete" onclick="deleteUser(${x.id})">🗑️ حذف</button>`}</div>`).join('')}</div>`
 }
 async function createUser(){
-  const d=document.getElementById('au-display').value.trim(),u=document.getElementById('au-user').value.trim(),p=document.getElementById('au-pass').value.trim(),r=document.getElementById('au-role').value
+  const d=document.getElementById('au-display').value.trim(),u=document.getElementById('au-user').value.trim(),p=document.getElementById('au-pass').value.trim(),r=document.getElementById('au-role').value,discord=document.getElementById('au-discord').value.trim()
   if(!u||!p||!d){toast('املأ جميع الحقول','error');return}
-  try{await api('POST','/api/users',{username:u,password:p,display_name:d,emoji:'👤',role:r});window._users=await api('GET','/api/users');renderDashAccounts();toast('✅ تمت الإضافة','success');document.getElementById('au-display').value='';document.getElementById('au-user').value='';document.getElementById('au-pass').value=''}catch(e){toast(e.message,'error')}
+  try{await api('POST','/api/users',{username:u,password:p,display_name:d,emoji:'👤',role:r,discord_tag:discord});window._users=await api('GET','/api/users');renderDashAccounts();toast('✅ تمت الإضافة','success');document.getElementById('au-display').value='';document.getElementById('au-user').value='';document.getElementById('au-pass').value='';document.getElementById('au-discord').value=''}catch(e){toast(e.message,'error')}
 }
 async function deleteUser(id){if(!await confirmModal('حذف الحساب؟'))return;try{await api('DELETE',`/api/users/${id}`);window._users=await api('GET','/api/users');renderDashAccounts();toast('🗑️ تم الحذف','info')}catch(e){toast(e.message,'error')}}
 
