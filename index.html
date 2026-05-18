@@ -275,8 +275,8 @@ tbody tr:last-child td{border-bottom:none}
 <script>
 const API = window.location.origin;
 let token = localStorage.getItem('lspd_token') || null;
-let currentUser = null;
 
+function jwtPayload(t){try{return JSON.parse(atob(t.split('.')[1]))}catch{return null}}
 function h(){const o={'Content-Type':'application/json'};if(token)o['Authorization']=`Bearer ${token}`;return o}
 async function api(m,p,b){const r=await fetch(`${API}${p}`,{method:m,headers:h(),body:b?JSON.stringify(b):null});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');return d}
 
@@ -305,7 +305,9 @@ async function doLogin(){
 
 async function checkAuth(){
   if(!token)return
-  try{currentUser=await api('GET','/api/me');enterDashboard()}
+  const p=jwtPayload(token)
+  if(p&&p.id){currentUser=p;enterDashboard()}
+  else try{currentUser=await api('GET','/api/me');enterDashboard()}
   catch{localStorage.removeItem('lspd_token');token=null}
 }
 
@@ -874,16 +876,16 @@ function renderDashStats(){
   const m=window._memberStats||{}
 
   document.getElementById('dash-stats-content').innerHTML=
-    `<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:12px">
-      ${[{n:s.totalUsers||0,l:'الأعضاء'},{n:s.totalApps||0,l:'الطلبات'},{n:s.pendingApps||0,l:'قيد المراجعة'},{n:s.totalCerts||0,l:'الشهادات'},{n:s.totalReports||0,l:'التقارير'},{n:s.totalAnn||0,l:'الإعلانات'},{n:s.totalPublicReports||0,l:'التقارير العامة'}].map(x=>`<div class="stat-card" style="padding:8px"><span class="stat-num" style="font-size:20px">${x.n}</span><div class="stat-label" style="font-size:11px">${x.l}</div></div>`).join('')}
+    `<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:4px;margin-bottom:10px">
+      ${[{n:s.totalUsers||0,l:'الأعضاء'},{n:s.totalApps||0,l:'الطلبات'},{n:s.pendingApps||0,l:'قيد المراجعة'},{n:s.totalCerts||0,l:'الشهادات'},{n:s.totalReports||0,l:'التقارير'},{n:s.totalAnn||0,l:'الإعلانات'},{n:s.totalPublicReports||0,l:'التقارير العامة'}].map(x=>`<div class="stat-card" style="padding:4px 6px"><span class="stat-num" style="font-size:16px">${x.n}</span><div class="stat-label" style="font-size:10px">${x.l}</div></div>`).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">📊 الطلبات حسب التاريخ</div><canvas id="chart-apps" height="160"></canvas></div>
-      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">📊 الشهادات حسب الشهر</div><canvas id="chart-certs" height="160"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="form-card" style="padding:8px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">📊 الطلبات حسب التاريخ</div><canvas id="chart-apps" height="140"></canvas></div>
+      <div class="form-card" style="padding:8px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">📊 الشهادات حسب الشهر</div><canvas id="chart-certs" height="140"></canvas></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
-      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">👥 توزيع الرتب</div><canvas id="chart-members" height="160"></canvas></div>
-      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">📊 حالة الطلبات</div><canvas id="chart-status" height="160"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <div class="form-card" style="padding:8px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">👥 توزيع الرتب</div><canvas id="chart-members" height="140"></canvas></div>
+      <div class="form-card" style="padding:8px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">📊 حالة الطلبات</div><canvas id="chart-status" height="140"></canvas></div>
     </div>`
 
   // Render charts after DOM update
