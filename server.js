@@ -63,7 +63,7 @@ async function initBot() {
   const bg = dbGet('SELECT value FROM settings WHERE key=?', ['guild_id']);
   botGuildId = bg ? bg.value : '';
   if (!token || !token.value) return;
-  botClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent] });
+  botClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
   botClient.on('clientReady', () => console.log('Bot online:', botClient.user.tag));
   botClient.on('messageCreate', async msg => {
     if (msg.author.bot) return;
