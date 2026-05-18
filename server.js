@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -10,73 +10,46 @@ const { createCanvas } = require('@napi-rs/canvas');
 
 /* ─── CERTIFICATE IMAGE RENDERER ─── */
 function renderCertImage(c) {
-  const w=700, h=370; const canvas=createCanvas(w,h); const ctx=canvas.getContext('2d');
-  const font = (s,w) => `${w||'normal'} ${s}px "Cairo",Arial,sans-serif`;
+  const s=2.2, w=Math.round(700*s), h=Math.round(370*s); const canvas=createCanvas(w,h); const ctx=canvas.getContext('2d');
+  const font = (sz,w) => `${w||'normal'} ${Math.round(sz*s)}px "Cairo",Arial,sans-serif`;
   const gold='#c9a84c', light='#fff9f0', muted='#5a6a7a';
+  const S=(v)=>Math.round(v*s);
 
-  // Background
   ctx.fillStyle=light; ctx.fillRect(0,0,w,h);
-  // Border
-  ctx.strokeStyle=gold; ctx.lineWidth=4; ctx.strokeRect(12,12,w-24,h-24);
-  ctx.lineWidth=2; ctx.strokeRect(18,18,w-36,h-36);
+  ctx.strokeStyle=gold; ctx.lineWidth=S(4); ctx.strokeRect(S(12),S(12),w-S(24),h-S(24));
+  ctx.lineWidth=S(2); ctx.strokeRect(S(18),S(18),w-S(36),h-S(36));
 
-  // Corner decorations
-  const drawCorner=(x,y,d1,d2)=>{ ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+d1,y+d2*0); ctx.moveTo(x,y); ctx.lineTo(x+d1*0,y+d2); ctx.strokeStyle=gold; ctx.lineWidth=2; ctx.stroke(); };
-  drawCorner(22,22,24,0); drawCorner(22,22,0,24);
-  drawCorner(w-22,22,-24,0); drawCorner(w-22,22,0,24);
-  drawCorner(22,h-22,24,0); drawCorner(22,h-22,0,-24);
-  drawCorner(w-22,h-22,-24,0); drawCorner(w-22,h-22,0,-24);
+  const dc=(x,y,d1,d2)=>{ ctx.beginPath(); ctx.moveTo(S(x),S(y)); ctx.lineTo(S(x+d1),S(y)); ctx.moveTo(S(x),S(y)); ctx.lineTo(S(x),S(y+d2)); ctx.strokeStyle=gold; ctx.lineWidth=S(2); ctx.stroke(); };
+  dc(22,22,24,0);dc(22,22,0,24);dc(w-S(22),S(22),-24,0);dc(w-S(22),S(22),0,24);
+  dc(22,h-S(22),24,0);dc(22,h-S(22),0,-24);dc(w-S(22),h-S(22),-24,0);dc(w-S(22),h-S(22),0,-24);
 
-  // Title
   ctx.fillStyle='#1a3a5c'; ctx.font=font(16,'bold'); ctx.textAlign='center';
-  const titles={'PROMOTION':'CERTIFICATE OF PROMOTION','TRAINING':'CERTIFICATE OF TRAINING','EXCELLENCE':'CERTIFICATE OF EXCELLENCE','GRADUATION':'CERTIFICATE OF GRADUATION'};
-  ctx.fillText(titles[c.cert_type]||'CERTIFICATE', w/2, 62);
+  const tls={'PROMOTION':'CERTIFICATE OF PROMOTION','TRAINING':'CERTIFICATE OF TRAINING','EXCELLENCE':'CERTIFICATE OF EXCELLENCE','GRADUATION':'CERTIFICATE OF GRADUATION'};
+  ctx.fillText(tls[c.cert_type]||'CERTIFICATE', w/2, S(62));
+  ctx.fillStyle='#8a7a4a'; ctx.font=font(10); ctx.fillText('LSPD — LOS SANTOS POLICE DEPARTMENT', w/2, S(82));
 
-  // Department
-  ctx.fillStyle='#8a7a4a'; ctx.font=font(10); ctx.fillText('LSPD — LOS SANTOS POLICE DEPARTMENT', w/2, 82);
+  ctx.strokeStyle=gold; ctx.lineWidth=S(1); ctx.beginPath(); ctx.moveTo(S(60),S(92)); ctx.lineTo(w-S(60),S(92)); ctx.stroke();
+  ctx.font=font(28); ctx.fillStyle=gold; ctx.fillText('⭐', w/2, S(128));
+  ctx.beginPath(); ctx.moveTo(S(60),S(138)); ctx.lineTo(w-S(60),S(138)); ctx.stroke();
 
-  // Separator
-  ctx.strokeStyle=gold; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(60,92); ctx.lineTo(w-60,92); ctx.stroke();
+  ctx.fillStyle=muted; ctx.font=font(9); ctx.fillText('THIS CERTIFIES THAT', w/2, S(158));
+  ctx.fillStyle='#1a3a5c'; ctx.font=font(28,'bold'); ctx.fillText(c.officer_name.toUpperCase(), w/2, S(194));
+  ctx.fillStyle=muted; ctx.font=font(10); ctx.fillText('has been awarded the rank of', w/2, S(216));
+  ctx.fillStyle=gold; ctx.font=font(22,'bold'); ctx.fillText(c.rank_name, w/2, S(247));
 
-  // Star
-  ctx.font=font(28); ctx.fillStyle=gold; ctx.fillText('⭐', w/2, 128);
-
-  // Separator
-  ctx.beginPath(); ctx.moveTo(60,138); ctx.lineTo(w-60,138); ctx.stroke();
-
-  // "THIS CERTIFIES THAT"
-  ctx.fillStyle=muted; ctx.font=font(9); ctx.fillText('THIS CERTIFIES THAT', w/2, 158);
-
-  // Officer Name
-  ctx.fillStyle='#1a3a5c'; ctx.font=font(28,'bold'); ctx.fillText(c.officer_name.toUpperCase(), w/2, 194);
-
-  // Awarded rank
-  ctx.fillStyle=muted; ctx.font=font(10); ctx.fillText('has been awarded the rank of', w/2, 216);
-  ctx.fillStyle=gold; ctx.font=font(22,'bold'); ctx.fillText(c.rank_name, w/2, 247);
-
-  // Description
   ctx.fillStyle=muted; ctx.font=font(9); ctx.textAlign='center';
-  ctx.fillText('In recognition of outstanding performance and dedication', w/2, 274);
-  ctx.fillText('to the Los Santos Police Department.', w/2, 288);
+  ctx.fillText('In recognition of outstanding performance and dedication', w/2, S(274));
+  ctx.fillText('to the Los Santos Police Department.', w/2, S(288));
 
-  // Footer separator
-  ctx.strokeStyle='#e0d5b8'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(40,300); ctx.lineTo(w-40,300); ctx.stroke();
+  ctx.strokeStyle='#e0d5b8'; ctx.lineWidth=S(1); ctx.beginPath(); ctx.moveTo(S(40),S(300)); ctx.lineTo(w-S(40),S(300)); ctx.stroke();
+  ctx.font=font(20); ctx.fillStyle=gold; ctx.textAlign='center'; ctx.fillText('👑', w/2, S(328));
 
-  // Crown
-  ctx.font=font(20); ctx.fillStyle=gold; ctx.textAlign='center';
-  ctx.fillText('👑', w/2, 328);
-
-  // Date
   ctx.fillStyle=muted; ctx.font=font(8); ctx.textAlign='left';
-  ctx.fillText(`Awarded on: ${c.issue_date||'—'}`, 50, 338);
-  ctx.fillStyle='#8a7a4a'; ctx.font=font(7);
-  ctx.fillText(`ID: ${c.id||'—'}`, 50, 350);
-
-  // Signature
+  ctx.fillText(`Awarded on: ${c.issue_date||'—'}`, S(50), S(338));
+  ctx.fillStyle='#8a7a4a'; ctx.font=font(7); ctx.fillText(`ID: ${c.id||'—'}`, S(50), S(350));
   ctx.textAlign='right'; ctx.fillStyle=muted; ctx.font=font(8);
-  ctx.fillText('Authorized by', w-50, 328);
-  ctx.fillStyle='#1a3a5c'; ctx.font=font(13,'bold');
-  ctx.fillText(c.issued_name||'Chief of Police', w-50, 348);
+  ctx.fillText('Authorized by', w-S(50), S(328));
+  ctx.fillStyle='#1a3a5c'; ctx.font=font(13,'bold'); ctx.fillText(c.issued_name||'Chief of Police', w-S(50), S(348));
 
   return canvas.toBuffer('image/png');
 }
