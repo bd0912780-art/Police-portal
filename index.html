@@ -874,22 +874,16 @@ function renderDashStats(){
   const m=window._memberStats||{}
 
   document.getElementById('dash-stats-content').innerHTML=
-    `<div class="stat-grid">
-      <div class="stat-card"><span class="stat-num">${s.totalUsers||0}</span><div class="stat-label">إجمالي الأعضاء</div></div>
-      <div class="stat-card"><span class="stat-num">${s.totalApps||0}</span><div class="stat-label">إجمالي الطلبات</div></div>
-      <div class="stat-card"><span class="stat-num">${s.pendingApps||0}</span><div class="stat-label">قيد المراجعة</div></div>
-      <div class="stat-card"><span class="stat-num">${s.totalCerts||0}</span><div class="stat-label">الشهادات</div></div>
-      <div class="stat-card"><span class="stat-num">${s.totalReports||0}</span><div class="stat-label">التقارير</div></div>
-      <div class="stat-card"><span class="stat-num">${s.totalAnn||0}</span><div class="stat-label">الإعلانات</div></div>
-      <div class="stat-card"><span class="stat-num">${s.totalPublicReports||0}</span><div class="stat-label">التقارير العامة</div></div>
+    `<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:12px">
+      ${[{n:s.totalUsers||0,l:'الأعضاء'},{n:s.totalApps||0,l:'الطلبات'},{n:s.pendingApps||0,l:'قيد المراجعة'},{n:s.totalCerts||0,l:'الشهادات'},{n:s.totalReports||0,l:'التقارير'},{n:s.totalAnn||0,l:'الإعلانات'},{n:s.totalPublicReports||0,l:'التقارير العامة'}].map(x=>`<div class="stat-card" style="padding:8px"><span class="stat-num" style="font-size:20px">${x.n}</span><div class="stat-label" style="font-size:11px">${x.l}</div></div>`).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="form-card"><h3>📊 الطلبات حسب التاريخ (آخر 30 يوم)</h3><canvas id="chart-apps" height="200"></canvas></div>
-      <div class="form-card"><h3>📊 الشهادات حسب الشهر</h3><canvas id="chart-certs" height="200"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">📊 الطلبات حسب التاريخ</div><canvas id="chart-apps" height="160"></canvas></div>
+      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">📊 الشهادات حسب الشهر</div><canvas id="chart-certs" height="160"></canvas></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
-      <div class="form-card"><h3>👥 توزيع الأعضاء حسب الرتبة</h3><canvas id="chart-members" height="200"></canvas></div>
-      <div class="form-card"><h3>📊 حالة الطلبات</h3><canvas id="chart-status" height="200"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">👥 توزيع الرتب</div><canvas id="chart-members" height="160"></canvas></div>
+      <div class="form-card" style="padding:10px"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">📊 حالة الطلبات</div><canvas id="chart-status" height="160"></canvas></div>
     </div>`
 
   // Render charts after DOM update
@@ -923,8 +917,9 @@ function renderChartApps(data){
       ]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8099b5',font:{family:'Cairo'}}}},
-      scales:{x:{ticks:{color:'#8099b5'}},y:{ticks:{color:'#8099b5'}}},
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8099b5',font:{size:10}},boxWidth:12}},
+      scales:{x:{ticks:{color:'#8099b5',font:{size:10}}},y:{ticks:{color:'#8099b5',font:{size:10}}}},
       color:'#8099b5'
     }
   })
@@ -941,10 +936,8 @@ function renderChartCerts(data){
       datasets:[{label:'الشهادات',data:data.map(d=>d.count),backgroundColor:'rgba(201,168,76,.7)',borderColor:'#c9a84c',borderWidth:1}]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8099b5',font:{family:'Cairo'}}}},
-      scales:{x:{ticks:{color:'#8099b5'}},y:{ticks:{color:'#8099b5'}}},
-      color:'#8099b5'
-    }
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8099b5',font:{size:10}},boxWidth:12}},
   })
 }
 
@@ -963,7 +956,7 @@ function renderChartMembers(stats){
       datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:0}]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8099b5',font:{family:'Cairo'}}}}
+      responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8099b5',font:{size:10},boxWidth:12}}}
     }
   })
 }
@@ -984,7 +977,7 @@ function renderChartStatus(overview){
       datasets:[{data,backgroundColor:['#f39c12','#22cc88','#e74c3c'],borderWidth:0}]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8099b5',font:{family:'Cairo'}}}}
+      responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8099b5',font:{size:10},boxWidth:12}}}
     }
   })
 }
