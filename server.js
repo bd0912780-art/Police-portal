@@ -10,7 +10,7 @@ const { createCanvas } = require('@napi-rs/canvas');
 
 /* ─── CERTIFICATE IMAGE RENDERER ─── */
 function renderCertImage(c) {
-  const s=2.2, w=Math.round(700*s), h=Math.round(370*s); const canvas=createCanvas(w,h); const ctx=canvas.getContext('2d');
+  const s=4, w=Math.round(700*s), h=Math.round(370*s); const canvas=createCanvas(w,h); const ctx=canvas.getContext('2d');
   const font = (sz,w) => `${w||'normal'} ${Math.round(sz*s)}px "Cairo",Arial,sans-serif`;
   const gold='#c9a84c', light='#fff9f0', muted='#5a6a7a';
   const S=(v)=>Math.round(v*s);
