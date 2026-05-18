@@ -750,9 +750,20 @@ async function updatePoints(id,amt){
   try{await api('PUT',`/api/division-members/${id}/points`,{points:amt});window._divisionMembers=await api('GET','/api/division-members');renderDashDivision();toast(amt>0?'✅ +1 نقطة':'❌ -1 نقطة','info')}catch(e){toast(e.message,'error')}
 }
 async function editNote(id,name,current){
-  const n=prompt('📝 ملاحظة لـ '+name+':',current)
-  if(n===null)return
-  try{await api('PUT',`/api/division-members/${id}/notes`,{notes:n});window._divisionMembers=await api('GET','/api/division-members');renderDashDivision();toast('✅ تم الحفظ','success')}catch(e){toast(e.message,'error')}
+  document.getElementById('note-name').textContent=name
+  document.getElementById('note-textarea').value=current||''
+  const ov=document.getElementById('note-overlay')
+  ov.classList.add('visible')
+  document.getElementById('note-textarea').focus()
+  return new Promise(resolve=>{
+    document.getElementById('note-save').onclick=async()=>{
+      const n=document.getElementById('note-textarea').value.trim()
+      ov.classList.remove('visible')
+      resolve(n)
+      try{await api('PUT',`/api/division-members/${id}/notes`,{notes:n});window._divisionMembers=await api('GET','/api/division-members');renderDashDivision();toast('✅ تم الحفظ','success')}catch(e){toast(e.message,'error')}
+    }
+    document.getElementById('note-cancel').onclick=()=>{ov.classList.remove('visible');resolve(null)}
+  })
 }
 async function deleteDivisionMember(id,name){
   if(!await confirmModal('حذف '+name+'?'))return
@@ -1089,6 +1100,16 @@ loadAnnouncements()
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn" id="confirm-yes" style="background:var(--danger)">✅ نعم</button>
       <button class="btn btn-sm" id="confirm-no" style="background:transparent;border:1px solid var(--border)">❌ لا</button>
+    </div>
+  </div>
+</div>
+<div id="note-overlay" class="login-overlay">
+  <div class="login-box" style="width:400px">
+    <h3 style="color:var(--accent);margin-bottom:12px;text-align:center">📝 ملاحظة لـ <span id="note-name"></span></h3>
+    <textarea id="note-textarea" rows="5" style="width:100%;border:1px solid rgba(255,255,255,.08);outline:none;background:#071320;color:white;padding:11px 14px;border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+      <button class="btn" id="note-save" style="background:var(--success)">💾 حفظ</button>
+      <button class="btn btn-sm" id="note-cancel" style="background:transparent;border:1px solid var(--border)">❌ إلغاء</button>
     </div>
   </div>
 </div>
