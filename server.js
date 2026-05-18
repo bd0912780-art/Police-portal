@@ -387,14 +387,13 @@ async function sendWebhook(url, payload) {
     console.error('Webhook error:', e.message);
   }
 }
-async function sendWebhookCert(url, content, imgUrl) {
-  if (!url) return;
+async function sendWebhookCert(url, content, imgBuffer) {
+  if (!url || !imgBuffer) return;
   try {
-    const res = await fetch(url, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({ content, embeds:[{ image:{ url:imgUrl }, color:0xc9a84c }] })
-    });
+    const form = new FormData();
+    form.append('content', content);
+    form.append('file', new Blob([imgBuffer], { type:'image/png' }), 'certificate.png');
+    const res = await fetch(url, { method:'POST', body:form });
     if (res.ok) console.log('Cert webhook sent');
     else console.error('Cert webhook fail:', res.status, await res.text().catch(()=>''));
   } catch(e) { console.error('Cert webhook err:', e.message); }
@@ -619,9 +618,8 @@ app.post('/api/certificates', auth, async (req, res) => {
   logAction('create_certificate', req.user, `${officer_name} - ${cert_type}`);
   const wh = getWebhookUrl('webhook_certificates');
   if (wh) {
-    const base = `${req.protocol}://${req.get('host')}`;
-    const imgUrl = `${base}/api/certificates/${result.lastInsertRowid}/image`;
-    sendWebhookCert(wh, `🎓 **شهادة جديدة** — ${officer_name}`, imgUrl);
+    const newCert = dbGet('SELECT * FROM certificates WHERE id=?', [result.lastInsertRowid]);
+    if (newCert) try { const img = renderCertImage(newCert); sendWebhookCert(wh, `🎓 **شهادة جديدة** — ${officer_name}`, img); } catch(e) { console.error('Cert render fail:', e.message); }
   }
   res.json({ success: true });
 });
