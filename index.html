@@ -276,7 +276,7 @@ tbody tr:last-child td{border-bottom:none}
 const API = window.location.origin;
 let token = localStorage.getItem('lspd_token') || null;
 
-function jwtPayload(t){try{return JSON.parse(atob(t.split('.')[1]))}catch{return null}}
+function jwtPayload(t){try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))}catch{return null}}
 function h(){const o={'Content-Type':'application/json'};if(token)o['Authorization']=`Bearer ${token}`;return o}
 async function api(m,p,b){const r=await fetch(`${API}${p}`,{method:m,headers:h(),body:b?JSON.stringify(b):null});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');return d}
 
@@ -879,11 +879,11 @@ function renderDashStats(){
     `<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:4px;margin-bottom:10px">
       ${[{n:s.totalUsers||0,l:'الأعضاء'},{n:s.totalApps||0,l:'الطلبات'},{n:s.pendingApps||0,l:'قيد المراجعة'},{n:s.totalCerts||0,l:'الشهادات'},{n:s.totalReports||0,l:'التقارير'},{n:s.totalAnn||0,l:'الإعلانات'},{n:s.totalPublicReports||0,l:'التقارير العامة'}].map(x=>`<div class="stat-card" style="padding:4px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span class="stat-num" style="font-size:14px;line-height:1">${x.n}</span><div class="stat-label" style="font-size:9px;line-height:1">${x.l}</div></div>`).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px">
-      <div class="form-card" style="padding:6px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:2px;text-align:center">📊 الطلبات</div><div style="flex:1;position:relative"><canvas id="chart-apps" style="width:100%;height:100%"></canvas></div></div>
-      <div class="form-card" style="padding:6px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:2px;text-align:center">📊 الشهادات</div><div style="flex:1;position:relative"><canvas id="chart-certs" style="width:100%;height:100%"></canvas></div></div>
-      <div class="form-card" style="padding:6px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:2px;text-align:center">👥 الرتب</div><div style="flex:1;position:relative"><canvas id="chart-members" style="width:100%;height:100%"></canvas></div></div>
-      <div class="form-card" style="padding:6px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:2px;text-align:center">📊 الحالة</div><div style="flex:1;position:relative"><canvas id="chart-status" style="width:100%;height:100%"></canvas></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+      <div class="form-card" style="padding:8px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;text-align:center">📊 الطلبات</div><div style="flex:1;position:relative"><canvas id="chart-apps" style="width:100%;height:100%"></canvas></div></div>
+      <div class="form-card" style="padding:8px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;text-align:center">📊 الشهادات</div><div style="flex:1;position:relative"><canvas id="chart-certs" style="width:100%;height:100%"></canvas></div></div>
+      <div class="form-card" style="padding:8px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;text-align:center">👥 الرتب</div><div style="flex:1;position:relative"><canvas id="chart-members" style="width:100%;height:100%"></canvas></div></div>
+      <div class="form-card" style="padding:8px;aspect-ratio:1;display:flex;flex-direction:column"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;text-align:center">📊 الحالة</div><div style="flex:1;position:relative"><canvas id="chart-status" style="width:100%;height:100%"></canvas></div></div>
     </div>`
     </div>`
 
