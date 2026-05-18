@@ -787,9 +787,21 @@ app.post('/api/certificates', auth, async (req, res) => {
   logAction('create_certificate', req.user, `${officer_name} - ${cert_type}`);
   const wh = getWebhookUrl('webhook_certificates');
   if (wh) {
-    const base = `${req.protocol}://${req.get('host')}`;
-    const imgUrl = `${base}/api/certificates/${result.lastInsertRowid}/image`;
-    sendWebhookCert(wh, `🎓 **شهادة جديدة**`, officer_name, issue_date||'—', imgUrl);
+    try {
+      const cert = { officer_name, cert_type, rank_name, issue_date: issue_date || new Date().toISOString().slice(0,10), issued_name: req.user.display_name, id: result.lastInsertRowid };
+      const imgBuffer = renderCertImage(cert);
+      const base64 = imgBuffer.toString('base64');
+      const payload = {
+        content: `🎓 **شهادة جديدة**\n👤 الضابط: **${officer_name}**\n📋 النوع: ${cert_type}\n🏅 الرتبة: ${rank_name}\n📅 التاريخ: ${issue_date || '—'}\n✨ بواسطة: ${req.user.display_name}`,
+        files: [{ name: `certificate-${result.lastInsertRowid}.png`, attachment: `data:image/png;base64,${base64}` }]
+      };
+      await fetch(wh, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      console.log('Certificate image sent to webhook');
+    } catch(e) { console.error('Cert webhook error:', e.message); }
   }
   res.json({ success: true });
 });
