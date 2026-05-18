@@ -67,10 +67,12 @@ async function initBot() {
   botClient.on('clientReady', () => console.log('Bot online:', botClient.user.tag));
   botClient.on('messageCreate', async msg => {
     if (msg.author.bot) return;
-    if (!msg.content) { console.log('Bot: empty content - MessageContent intent missing?'); return; }
-    const prefix = '!اجازة';
-    if (!msg.content.startsWith(prefix)) return;
-    const raw = msg.content.slice(prefix.length).trim().split(/\s+/);
+    const content = msg.content || '';
+    if (!content) { msg.reply('⚠️ البوت مايقدر يقرأ الرسائل. تأكد من تفعيل **Message Content Intent** في Developer Portal').catch(()=>{}); return; }
+    const prefixes = ['!اجازة', '!leave'];
+    if (!prefixes.some(p => content.startsWith(p))) return;
+    const matched = prefixes.find(p => content.startsWith(p));
+    const raw = content.slice(matched.length).trim().split(/\s+/);
     console.log('Bot: received اجازة:', raw);
     const days = parseInt(raw[0]);
     if (!days || days < 1) { msg.reply('⚠️ استخدم: `!اجازة [عدد الأيام] [اسمك]`\nمثال: `!اجازة 7 أحمد`'); return; }
