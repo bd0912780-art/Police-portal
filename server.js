@@ -357,7 +357,7 @@ async function initDB() {
   const annCount = dbGet('SELECT COUNT(*) as c FROM announcements');
   if (annCount.c === 0) {
     db.run('INSERT INTO announcements (title,body,date) VALUES (?,?,?)',
-      ['test']);
+      ['مرحباً', 'مرحباً بكم في بوابة الشرطة', new Date().toISOString().slice(0,10)]);
   }
 
   saveDB();
