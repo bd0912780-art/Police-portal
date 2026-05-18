@@ -95,13 +95,26 @@ async function initBot() {
   try { await botClient.login(token.value); } catch(e) { console.error('Bot login fail:', e.message); botClient = null; }
 }
 async function sendDiscordDM(tag, content) {
-  if (!botClient || !botGuildId) return;
-  const guild = botClient.guilds.cache.get(botGuildId);
-  if (!guild) { console.error('Bot: guild not found'); return; }
-  try { await guild.members.fetch(); } catch {}
-  const member = guild.members.cache.find(m => m.user.tag === tag || m.user.username === tag || m.user.displayName === tag);
-  if (!member) { console.error('Bot: member not found:', tag); return; }
-  try { await member.send(content); console.log('Bot: DM sent to', tag); } catch(e) { console.error('Bot: DM fail:', e.message); }
+  if (!botClient || !botGuildId) { console.error('Bot: not initialized'); return; }
+  try {
+    const guild = await botClient.guilds.fetch(botGuildId);
+    if (!guild) { console.error('Bot: guild not found'); return; }
+    let member = null;
+    // If tag is a Discord ID (numbers only)
+    if (/^\d{17,}$/.test(tag)) {
+      try { member = await guild.members.fetch(tag); } catch {}
+    }
+    // Search by username/tag
+    if (!member) {
+      try {
+        const fetched = await guild.members.fetch({ query: tag, limit: 10 });
+        member = fetched.find(m => m.user.tag === tag || m.user.username === tag || m.user.displayName === tag) || fetched.first();
+      } catch {}
+    }
+    if (!member) { console.error('Bot: member not found:', tag); return; }
+    await member.send(content);
+    console.log('Bot: DM sent to', tag);
+  } catch(e) { console.error('Bot: DM fail:', e.message); }
 }
 
 const app = express();
