@@ -1118,14 +1118,13 @@ function renderDashAccounts(){
   document.getElementById('dash-accounts-content').innerHTML=`<div class="form-card"><h3>➕ إضافة مستخدم</h3>
     <div class="form-row3"><div class="field"><label>الاسم</label><input type="text" id="au-display"></div>
     <div class="field"><label>كلمة المرور</label><input type="text" id="au-pass"></div>
-    <div class="field"><label>Discord Tag</label><input type="text" id="au-discord" placeholder="user#1234"></div></div>
-    <div class="form-row3"><div class="field"><label>الرتبة</label><select id="au-role">
+    <div class="field"><label>الرتبة</label><select id="au-role">
       <option value="VISITOR">VISITOR</option><option value="APPLICANT VIEWER">APPLICANT VIEWER</option>
       <option value="WINGS">WINGS</option><option value="WING COMMANDER">WING COMMANDER</option>
       <option value="IA MEMBER">IA MEMBER</option><option value="IA CHIEF">IA CHIEF</option>
       <option value="FTO MEMBER">FTO MEMBER</option><option value="FTO CHIEF">FTO CHIEF</option>
-      <option value="FULL ACCESS">FULL ACCESS</option></select></div>
-    <div class="field"><label>Discord Tag</label><input type="text" id="au-discord" placeholder="user#1234"></div></div>
+      <option value="FULL ACCESS">FULL ACCESS</option></select></div></div>
+    <div class="form-row3"><div class="field"><label>Discord Tag</label><input type="text" id="au-discord" placeholder="user#1234"></div></div>
     <button class="btn btn-sm btn-gold" onclick="createUser()" style="width:auto">👤 إنشاء</button></div>
     <div class="users-grid">${u.map(x=>`<div class="user-card"><div class="user-card-header"><div class="user-avatar">${x.emoji}</div><div><div class="user-card-name">${x.display_name} ${x.is_owner?'<span class="owner-badge">👑</span>':''}</div><div class="user-card-username">@${x.username} • ${x.role}${x.discord_tag?' | '+x.discord_tag:''}</div></div></div>${x.is_owner?'<span style="color:var(--muted);font-size:11px">👑 لا يمكن تعديل المالك</span>':`<button class="action-btn delete" onclick="deleteUser(${x.id})">🗑️ حذف</button>`}</div>`).join('')}</div>`
 }
