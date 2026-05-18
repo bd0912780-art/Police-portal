@@ -365,16 +365,6 @@ async function initDB() {
         ['مرحباً', 'مرحباً بكم في بوابة الشرطة', new Date().toISOString().slice(0,10)]);
     }
   } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
-  } catch(e) { console.log('Announcements seed skipped:', e.message); }
 
   saveDB();
   console.log('âœ… Database initialized');
