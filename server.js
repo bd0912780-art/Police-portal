@@ -67,13 +67,16 @@ async function initBot() {
   botClient.on('clientReady', () => console.log('Bot online:', botClient.user.tag));
   botClient.on('messageCreate', async msg => {
     if (msg.author.bot) return;
+    if (!msg.content) { console.log('Bot: empty content - MessageContent intent missing?'); return; }
     const prefix = '!leave';
     if (!msg.content.startsWith(prefix)) return;
-    const args = msg.content.slice(prefix.length).trim().split(/\s+/);
+    const raw = msg.content.slice(prefix.length).trim();
+    console.log('Bot: received:', raw);
+    const parts = raw.split(/\s+/);
     // Format: !leave [type] [from] [to] [reason...] or !leave type:سنوية from:... to:...
     let type='annual',from_date,to_date,reason='',discord_tag=msg.author.tag;
     const kv = {};
-    args.forEach(p => { const m = p.match(/^(\w+):(.+)$/); if (m) kv[m[1].toLowerCase()] = m[2]; });
+    parts.forEach(p => { const m = p.match(/^(\w+):(.+)$/); if (m) kv[m[1].toLowerCase()] = m[2]; });
     if (kv.type || kv.from || kv.to) {
       type = kv.type || 'annual';
       from_date = kv.from;
@@ -81,11 +84,11 @@ async function initBot() {
       reason = kv.reason || '';
       discord_tag = kv.discord || msg.author.tag;
     } else {
-      type = args[0] || 'annual';
-      from_date = args[1];
-      to_date = args[2];
-      reason = args.slice(3).filter(a => !a.startsWith('discord:')).join(' ') || '';
-      const d = args.find(a => a.startsWith('discord:'));
+      type = parts[0] || 'annual';
+      from_date = parts[1];
+      to_date = parts[2];
+      reason = parts.slice(3).filter(a => !a.startsWith('discord:')).join(' ') || '';
+      const d = parts.find(a => a.startsWith('discord:'));
       if (d) discord_tag = d.slice(8) || msg.author.tag;
     }
     if (!from_date || !to_date) {
@@ -997,6 +1000,9 @@ app.get('/api/ranks', (req, res) => {
 });
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+app.get('/api/bot-status', (req, res) => {
+  res.json({ online: !!botClient && !!botClient.user, user: botClient?.user?.tag || null, guildId: botGuildId || null, guilds: botClient?.guilds?.cache?.size || 0, hasToken: !!dbGet('SELECT value FROM settings WHERE key=?', ['bot_token'])?.value });
+});
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
