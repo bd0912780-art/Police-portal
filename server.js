@@ -69,19 +69,27 @@ async function initBot() {
     if (msg.author.bot) return;
     const prefix = '!leave';
     if (!msg.content.startsWith(prefix)) return;
-    const args = msg.content.slice(prefix.length).trim();
-    const parts = {};
-    args.split(/\s+/).forEach(p => {
-      const m = p.match(/^(\w+):(.+)$/);
-      if (m) parts[m[1].toLowerCase()] = m[2];
-    });
-    const type = parts.type || 'annual';
-    const reason = parts.reason || '';
-    const from_date = parts.from;
-    const to_date = parts.to;
-    const discord_tag = parts.discord || msg.author.tag;
+    const args = msg.content.slice(prefix.length).trim().split(/\s+/);
+    // Format: !leave [type] [from] [to] [reason...] or !leave type:سنوية from:... to:...
+    let type='annual',from_date,to_date,reason='',discord_tag=msg.author.tag;
+    const kv = {};
+    args.forEach(p => { const m = p.match(/^(\w+):(.+)$/); if (m) kv[m[1].toLowerCase()] = m[2]; });
+    if (kv.type || kv.from || kv.to) {
+      type = kv.type || 'annual';
+      from_date = kv.from;
+      to_date = kv.to;
+      reason = kv.reason || '';
+      discord_tag = kv.discord || msg.author.tag;
+    } else {
+      type = args[0] || 'annual';
+      from_date = args[1];
+      to_date = args[2];
+      reason = args.slice(3).filter(a => !a.startsWith('discord:')).join(' ') || '';
+      const d = args.find(a => a.startsWith('discord:'));
+      if (d) discord_tag = d.slice(8) || msg.author.tag;
+    }
     if (!from_date || !to_date) {
-      msg.reply('⚠️ استخدم: `!leave type:سنوية from:2026-05-20 to:2026-05-22 reason:سبب discord:اسمك#0000`');
+      msg.reply('⚠️ استخدم: `!leave سنوية 2026-05-20 2026-05-22 سبب discord:اسمك`');
       return;
     }
     try {
