@@ -459,11 +459,6 @@ app.post('/api/users', auth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/users', auth, (req, res) => {
-  if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
-  res.json(dbQuery('SELECT id, username, display_name, emoji, role, is_owner, discord_tag, created_at FROM users ORDER BY id'));
-});
-
 app.put('/api/users/:id', auth, (req, res) => {
   if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
   const userId = parseInt(req.params.id);
