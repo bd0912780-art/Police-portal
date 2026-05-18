@@ -439,8 +439,9 @@ app.post('/api/users', auth, (req, res) => {
   const finalRole = validRoles.includes(role) ? role : 'VISITOR';
 
   const hash = bcrypt.hashSync(password, 10);
+  const uniqueUsername = username + '_' + Date.now().toString().slice(-4);
   dbRun('INSERT INTO users (username,password,display_name,emoji,role,discord_tag) VALUES (?,?,?,?,?,?)',
-    [username, hash, display_name, emoji || '👤', finalRole, discord_tag || '']);
+    [uniqueUsername, hash, display_name, emoji || '👤', finalRole, discord_tag || '']);
 
   logAction('create_user', req.user, `Created user: ${username} (${finalRole})`);
 
