@@ -221,7 +221,6 @@ tbody tr:last-child td{border-bottom:none}
       <button class="side-btn hidden" id="sb-division" onclick="showDash('division',this)"><span class="side-btn-icon">👥</span> أعضاء الأقسام</button>
       <button class="side-btn hidden" id="sb-logs" onclick="showDash('logs',this)"><span class="side-btn-icon">📜</span> السجلات</button>
       <button class="side-btn hidden" id="sb-settings" onclick="showDash('settings',this)"><span class="side-btn-icon">⚙️</span> الإعدادات</button>
-      <button class="side-btn hidden" id="sb-attendance" onclick="showDash('attendance',this)"><span class="side-btn-icon">⏰</span> الحضور</button>
       <button class="side-btn hidden" id="sb-leave" onclick="showDash('leave',this)"><span class="side-btn-icon">🏖️</span> الإجازات</button>
       <button class="side-btn hidden" id="sb-stats" onclick="showDash('stats',this)"><span class="side-btn-icon">📈</span> الإحصائيات</button>
       <button class="side-btn hidden" id="sb-files" onclick="showDash('files',this)"><span class="side-btn-icon">📁</span> الملفات</button>
@@ -232,7 +231,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="content">
       <div id="dash-home">
         <div id="dash-profile"></div>
-        <div id="dash-stats" class="stat-grid"></div>
+        <div id="dash-home-stats" class="stat-grid"></div>
         <div id="dash-member-stats" class="stat-grid" style="display:none"></div>
         <div class="section-title">📢 الإعلانات</div>
         <div id="dash-ann"></div>
@@ -253,7 +252,6 @@ tbody tr:last-child td{border-bottom:none}
         <div class="section-title" style="margin-top:20px">❓ أسئلة النقل</div>
         <div id="dash-questions-transfer"></div>
       </div>
-      <div id="dash-attendance" class="hidden"><div class="section-title">⏰ تسجيل الحضور والانصراف</div><div id="dash-attendance-content"></div></div>
       <div id="dash-leave" class="hidden"><div class="section-title">🏖️ طلبات الإجازات</div><div id="dash-leave-content"></div></div>
       <div id="dash-stats" class="hidden"><div class="section-title">📈 الإحصائيات المتقدمة</div><div id="dash-stats-content"></div></div>
       <div id="dash-files" class="hidden"><div class="section-title">📁 إدارة الملفات</div><div id="dash-files-content"></div></div>
@@ -462,7 +460,7 @@ function can(f,l='view'){if(currentUser?.is_owner)return true;const p=PERM[f]?.[
 /* ─── DASHBOARD ─── */
 async function setupDash(){
   const isHead=currentUser.is_owner||currentUser.role==='FULL ACCESS'
-  const btns={reports:['reports','view'],announcements:['reports','create'],apps:['applications','view'],transfers:['applications','view'],certs:['certificates','full'],pubreports:['applications','view'],division:['division_members','full'],logs:['logs','full'],settings:['settings','full'],accounts:['accounts','full'],attendance:['reports','view'],leave:['applications','view'],stats:['accounts','full'],files:['accounts','full']}
+  const btns={reports:['reports','view'],announcements:['reports','create'],apps:['applications','view'],transfers:['applications','view'],certs:['certificates','full'],pubreports:['applications','view'],division:['division_members','full'],logs:['logs','full'],settings:['settings','full'],accounts:['accounts','full'],leave:['applications','view'],stats:['accounts','full'],files:['accounts','full']}
   Object.entries(btns).forEach(([id,[f,l]])=>{document.getElementById('sb-'+id).classList.toggle('hidden',id==='pubreports'?!isHead:!can(f,l))})
   document.getElementById('dash-profile').innerHTML=`<div class="profile-card"><div class="avatar">${currentUser.emoji}</div><div class="profile-info"><h2>${currentUser.display_name} ${currentUser.is_owner?'<span class="owner-badge">👑 مالك</span>':''}</h2><p>${currentUser.role}</p></div></div>`
   await loadDashData()
@@ -481,7 +479,6 @@ async function setupDash(){
   renderDashAccounts()
   renderQuestions('application','dash-questions-app')
   renderQuestions('transfer','dash-questions-transfer')
-  renderDashAttendance()
   renderDashLeave()
   renderDashStats()
   renderDashFiles()
@@ -498,21 +495,19 @@ async function loadDashData(){
   if(can('division_members','full'))try{window._divisionMembers=await api('GET','/api/division-members')}catch{}
   const _isHead=currentUser.is_owner||currentUser.role==='FULL ACCESS'
   if(_isHead)try{window._pubReports=await api('GET','/api/public-reports')}catch{}
-  if(can('reports','view'))try{window._attendance=await api('GET','/api/attendance')}catch{}
   if(can('applications','view'))try{window._leave=await api('GET','/api/leave')}catch{}
   if(can('accounts','full')){
     try{window._statsOverview=await api('GET','/api/stats/overview')}catch{}
     try{window._appsByDate=await api('GET','/api/stats/applications-by-date?days=30')}catch{}
     try{window._certsByMonth=await api('GET','/api/stats/certificates-by-month?months=12')}catch{}
-    try{window._attendanceSummary=await api('GET','/api/attendance/summary')}catch{}
     try{window._files=await api('GET','/api/files')}catch{}
   }
 }
 
 function renderStats(){
-  if(!can('applications','view')){document.getElementById('dash-stats').innerHTML='';return}
+  if(!can('applications','view')){document.getElementById('dash-home-stats').innerHTML='';return}
   const a=window._apps||[],t=window._transfers||[]
-  document.getElementById('dash-stats').innerHTML=`<div class="stat-card"><span class="stat-num">${a.length+t.length}</span><div class="stat-label">إجمالي الطلبات</div></div>
+  document.getElementById('dash-home-stats').innerHTML=`<div class="stat-card"><span class="stat-num">${a.length+t.length}</span><div class="stat-label">إجمالي الطلبات</div></div>
     <div class="stat-card"><span class="stat-num">${a.filter(x=>x.status==='pending').length+t.filter(x=>x.status==='pending').length}</span><div class="stat-label">قيد المراجعة</div></div>
     <div class="stat-card"><span class="stat-num">${a.filter(x=>x.status==='accepted').length+t.filter(x=>x.status==='accepted').length}</span><div class="stat-label">مقبولة</div></div>
     <div class="stat-card"><span class="stat-num">${(window._certs||[]).length}</span><div class="stat-label">الشهادات</div></div>`
@@ -770,60 +765,6 @@ function renderDashLogs(){
 }
 async function clearLogs(){if(!await confirmModal('مسح جميع السجلات؟'))return;try{await api('DELETE','/api/logs');window._logs=[];renderDashLogs();toast('🗑️ تم المسح','info')}catch(e){toast(e.message,'error')}}
 
-/* ─── ATTENDANCE ─── */
-function renderDashAttendance(){
-  if(!can('reports','view'))return
-  const a=window._attendance||[]
-  const isAdmin=can('accounts','full')
-  const today = new Date().toISOString().slice(0,10)
-  const hasClockIn = a.some(x=>x.action==='clock_in'&&x.user_id===currentUser.id&&x.date===today)
-  const hasClockOut = a.some(x=>x.action==='clock_out'&&x.user_id===currentUser.id&&x.date===today)
-  const sum = window._attendanceSummary||{}
-
-  document.getElementById('dash-attendance-content').innerHTML=
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-      <div class="form-card">
-        <h3>⏰ تسجيل الحضور</h3>
-        <div class="field"><label>ملاحظة (اختياري)</label><input type="text" id="att-note" placeholder="ملاحظة..."></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm btn-success" onclick="clockIn()" style="width:auto;flex:1"${hasClockIn?' disabled':''}>✅ تسجيل حضور</button>
-          <button class="btn btn-sm btn-danger" onclick="clockOut()" style="width:auto;flex:1"${!hasClockIn||hasClockOut?' disabled':''}>🚪 تسجيل انصراف</button>
-        </div>
-        ${hasClockIn?'<div style="font-size:12px;color:var(--success);margin-top:6px">✅ تم تسجيل الحضور اليوم</div>':''}
-        ${hasClockOut?'<div style="font-size:12px;color:var(--muted);margin-top:2px">🚪 تم تسجيل الانصراف اليوم</div>':''}
-      </div>
-      ${isAdmin?`<div class="form-card"><h3>📊 ملخص اليوم</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div class="stat-card"><span class="stat-num">${sum.total_in||0}</span><div class="stat-label">حاضر اليوم</div></div>
-          <div class="stat-card"><span class="stat-num">${sum.total_out||0}</span><div class="stat-label">منصرف اليوم</div></div>
-        </div></div>`:''}
-    </div>
-    <div class="section-title" style="font-size:14px;margin-top:0">📋 سجل الحضور</div>
-    <div class="table-wrap"><table><thead><tr><th>#</th><th>الاسم</th><th>الإجراء</th><th>التاريخ</th><th>الوقت</th><th>ملاحظة</th></tr></thead><tbody>
-    ${a.length?a.map((x,i)=>`<tr><td>${i+1}</td><td>${x.display_name}</td><td>${x.action==='clock_in'?'<span style="color:var(--success)">✅ حضور</span>':'<span style="color:var(--muted)">🚪 انصراف</span>'}</td><td>${x.date}</td><td>${x.timestamp?.slice(11,16)||'—'}</td><td style="font-size:11px;color:var(--muted)">${x.note||'—'}</td></tr>`).join(''):`<tr><td colspan="6" style="text-align:center;color:var(--muted)">لا توجد سجلات</td></tr>`}
-    </tbody></table></div>`
-}
-
-async function clockIn(){
-  try{
-    const r=await api('POST','/api/attendance/clock',{action:'clock_in',note:document.getElementById('att-note')?.value||''})
-    toast(r.message||'✅ تم تسجيل الحضور','success')
-    window._attendance=await api('GET','/api/attendance')
-    if(can('accounts','full'))window._attendanceSummary=await api('GET','/api/attendance/summary')
-    renderDashAttendance()
-  }catch(e){toast(e.message,'error')}
-}
-
-async function clockOut(){
-  try{
-    const r=await api('POST','/api/attendance/clock',{action:'clock_out',note:document.getElementById('att-note')?.value||''})
-    toast(r.message||'✅ تم تسجيل الانصراف','success')
-    window._attendance=await api('GET','/api/attendance')
-    if(can('accounts','full'))window._attendanceSummary=await api('GET','/api/attendance/summary')
-    renderDashAttendance()
-  }catch(e){toast(e.message,'error')}
-}
-
 /* ─── LEAVE ─── */
 function renderDashLeave(){
   if(!can('applications','view'))return
@@ -836,6 +777,7 @@ function renderDashLeave(){
     <div class="form-row"><div class="field"><label>النوع</label><select id="leave-type">
       ${leaveTypes.map(t=>`<option value="${t.value}">${t.label}</option>`).join('')}</select></div>
     <div class="field"><label>السبب</label><input type="text" id="leave-reason" placeholder="السبب..."></div></div>
+    <div class="field"><label>حساب دسكورد (لإشعار القبول/الرفض)</label><input type="text" id="leave-discord" placeholder="user#0000 أو اسم المستخدم"></div>
     <div class="form-row"><div class="field"><label>من تاريخ</label><input type="date" id="leave-from"></div>
     <div class="field"><label>إلى تاريخ</label><input type="date" id="leave-to"></div></div>
     <button class="btn btn-sm" onclick="submitLeave()" style="width:auto">📩 إرسال طلب الإجازة</button></div>
@@ -855,9 +797,10 @@ async function submitLeave(){
   const reason=document.getElementById('leave-reason').value.trim()
   const from_date=document.getElementById('leave-from').value
   const to_date=document.getElementById('leave-to').value
+  const discord_tag=document.getElementById('leave-discord').value.trim()
   if(!from_date||!to_date){toast('اختر التاريخ','error');return}
   try{
-    await api('POST','/api/leave',{type,reason,from_date,to_date})
+    await api('POST','/api/leave',{type,reason,from_date,to_date,discord_tag})
     window._leave=await api('GET','/api/leave')
     renderDashLeave()
     toast('✅ تم تقديم طلب الإجازة','success')
@@ -939,7 +882,6 @@ function renderDashStats(){
       <div class="stat-card"><span class="stat-num">${s.totalReports||0}</span><div class="stat-label">التقارير</div></div>
       <div class="stat-card"><span class="stat-num">${s.totalAnn||0}</span><div class="stat-label">الإعلانات</div></div>
       <div class="stat-card"><span class="stat-num">${s.totalPublicReports||0}</span><div class="stat-label">التقارير العامة</div></div>
-      <div class="stat-card"><span class="stat-num">${s.todayAttendance||0}</span><div class="stat-label">الحضور اليوم</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="form-card"><h3>📊 الطلبات حسب التاريخ (آخر 30 يوم)</h3><canvas id="chart-apps" height="200"></canvas></div>
@@ -1030,16 +972,16 @@ function renderChartStatus(overview){
   destroyChart('chart-status')
   const ctx=document.getElementById('chart-status')?.getContext('2d')
   if(!ctx)return
-  const total=overview.totalApps||0
   const pending=overview.pendingApps||0
-  const accepted=(overview.totalApps||0)-(overview.pendingApps||0)
-  const data=[pending,accepted]
-  const labels=['قيد المراجعة','تم البت']
+  const accepted=overview.acceptedApps||0
+  const rejected=overview.rejectedApps||0
+  const data=[pending,accepted,rejected]
+  const labels=['قيد المراجعة','مقبولة','مرفوضة']
   chartInstances['chart-status']=new Chart(ctx,{
     type:'pie',
     data:{
       labels,
-      datasets:[{data,backgroundColor:['#f39c12','#22cc88'],borderWidth:0}]
+      datasets:[{data,backgroundColor:['#f39c12','#22cc88','#e74c3c'],borderWidth:0}]
     },
     options:{
       responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8099b5',font:{family:'Cairo'}}}}
