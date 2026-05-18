@@ -476,14 +476,25 @@ app.post('/api/users', auth, (req, res) => {
 
   // Send welcome DM
   const welcomeMsg = dbGet('SELECT value FROM settings WHERE key=?', ['welcome_message']);
-  if (welcomeMsg && welcomeMsg.value) {
-    const tag = discord_tag || username;
-    const msg = welcomeMsg.value
-      .replace(/{username}/g, username)
-      .replace(/{password}/g, password)
-      .replace(/{name}/g, display_name)
-      .replace(/{role}/g, finalRole);
-    sendDiscordDM(tag, msg).catch(() => {});
+  const msgTemplate = (welcomeMsg && welcomeMsg.value) || 'مرحباً {name}!\nتم إنشاء حسابك في بوابة LSPD.\nاسم المستخدم: {username}\nكلمة المرور: {password}\nالرتبة: {role}';
+  const msg = msgTemplate
+    .replace(/{username}/g, username)
+    .replace(/{password}/g, password)
+    .replace(/{name}/g, display_name)
+    .replace(/{role}/g, finalRole);
+  if (discord_tag) {
+    console.log('Sending welcome DM to:', discord_tag);
+    sendDiscordDM(discord_tag, msg).catch(e => console.error('Welcome DM failed:', e.message));
+  } else {
+    console.log('No discord_tag provided, skipping welcome DM');
+  }
+
+  // Also send webhook notification
+  const wh = getWebhookUrl('webhook_applications');
+  if (wh) {
+    sendWebhook(wh, {
+      content: `👤 **حساب جديد تم إنشاؤه**\nالاسم: ${display_name}\nالمستخدم: ${username}\nالرتبة: ${finalRole}${discord_tag ? '\nديسكورد: ' + discord_tag : ''}`
+    });
   }
 
   res.json({ success: true });
