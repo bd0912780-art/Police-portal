@@ -875,10 +875,10 @@ app.get('/api/leave', auth, (req, res) => {
 });
 
 app.post('/api/leave', auth, (req, res) => {
-  const { type, reason, from_date, to_date } = req.body;
+  const { type, reason, from_date, to_date, discord_tag } = req.body;
   if (!type || !from_date || !to_date) return res.status(400).json({ error: 'Required fields missing' });
   dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'portal',?)",
-    [req.user.display_name, req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
+    [req.user.display_name, discord_tag || req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
   logAction('create_leave', req.user, type + ' ' + from_date + ' -> ' + to_date);
   res.json({ success: true, message: '✅ تم تقديم طلب الإجازة' });
 });
@@ -918,11 +918,12 @@ app.get('/api/stats/overview', auth, (req, res) => {
   const totalAnn = dbGet('SELECT COUNT(*) as c FROM announcements')?.c || 0;
   const totalPublicReports = dbGet('SELECT COUNT(*) as c FROM public_reports')?.c || 0;
   const totalDivMembers = dbGet('SELECT COUNT(*) as c FROM division_members')?.c || 0;
-  const todayAtt = dbGet("SELECT COUNT(*) as c FROM attendance WHERE date=date('now') AND action='clock_in'")?.c || 0;
+  const rejectedApps = dbGet("SELECT COUNT(*) as c FROM applications WHERE status='rejected'")?.c || 0;
+  const acceptedApps = dbGet("SELECT COUNT(*) as c FROM applications WHERE status='accepted'")?.c || 0;
   res.json({
-    totalUsers, totalApps, pendingApps, totalCerts,
+    totalUsers, totalApps, pendingApps, acceptedApps, rejectedApps, totalCerts,
     totalReports, totalAnn, totalPublicReports,
-    totalDivMembers, todayAttendance: todayAtt
+    totalDivMembers
   });
 });
 
