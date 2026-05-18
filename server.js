@@ -288,6 +288,16 @@ async function initDB() {
     created_at TEXT DEFAULT (datetime('now','localtime'))
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS point_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id INTEGER REFERENCES division_members(id),
+    member_name TEXT,
+    points INTEGER NOT NULL,
+    reason TEXT DEFAULT '',
+    by_user TEXT,
+    date TEXT DEFAULT (datetime('now','localtime'))
+  )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
@@ -427,6 +437,18 @@ app.post('/api/users', auth, (req, res) => {
     [username, hash, display_name, emoji || 'ًں‘¤', finalRole]);
 
   logAction('create_user', req.user, `Created user: ${username} (${finalRole})`);
+
+  // Send welcome DM
+  const welcomeMsg = dbGet('SELECT value FROM settings WHERE key=?', ['welcome_message']);
+  if (welcomeMsg && welcomeMsg.value) {
+    const msg = welcomeMsg.value
+      .replace(/{username}/g, username)
+      .replace(/{password}/g, password)
+      .replace(/{name}/g, display_name)
+      .replace(/{role}/g, finalRole);
+    sendDiscordDM(username, msg).catch(() => {});
+  }
+
   res.json({ success: true });
 });
 
@@ -769,6 +791,8 @@ app.put('/api/division-members/:id/points', auth, (req, res) => {
   const { points } = req.body;
   if (typeof points !== 'number') return res.status(400).json({ error: 'Points must be a number' });
   dbRun('UPDATE division_members SET points=? WHERE id=?', [member.points + points, member.id]);
+  dbRun('INSERT INTO point_logs (member_id,member_name,points,reason,by_user) VALUES (?,?,?,?,?)',
+    [member.id, member.name, points, '', req.user.display_name || req.user.username]);
   logAction('update_points', req.user, `${member.name}: ${points>0?'+':''}${points}`);
   res.json({ success: true });
 });
@@ -792,6 +816,22 @@ app.delete('/api/division-members/:id', auth, (req, res) => {
   dbRun('DELETE FROM division_members WHERE id=?', [member.id]);
   logAction('delete_division_member', req.user, member.name);
   res.json({ success: true });
+});
+
+app.get('/api/division-members/:id/point-logs', auth, (req, res) => {
+  if (!hasPerm(req.user, 'division_members', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const logs = dbQuery('SELECT * FROM point_logs WHERE member_id=? ORDER BY date DESC LIMIT 100', [req.params.id]);
+  res.json(logs);
+});
+
+app.get('/api/stats/advanced', auth, (req, res) => {
+  if (!hasPerm(req.user, 'applications', 'view')) return res.status(403).json({ error: 'Forbidden' });
+  const activity7d = dbQuery("SELECT date(created_at) as day, COUNT(*) as count FROM logs WHERE date(created_at) >= date('now','-7 days') GROUP BY day ORDER BY day");
+  const topWarned = dbQuery("SELECT dm.name, dm.division, COUNT(*) as warn_count FROM point_logs pl JOIN division_members dm ON pl.member_id=dm.id WHERE pl.points < 0 GROUP BY pl.member_id ORDER BY warn_count DESC LIMIT 10");
+  const appRate = dbGet("SELECT COUNT(*) as total, SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as accepted, SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) as rejected, ROUND(CAST(SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as rate FROM applications WHERE status != 'pending'");
+  const newMembers7d = dbQuery("SELECT date(created_at) as day, COUNT(*) as count FROM division_members WHERE date(created_at) >= date('now','-7 days') GROUP BY day ORDER BY day");
+  const divisionStats = dbQuery("SELECT division, COUNT(*) as count, SUM(points) as total_points FROM division_members GROUP BY division ORDER BY count DESC");
+  res.json({ activity7d, topWarned, appRate: appRate || {}, newMembers7d, divisionStats });
 });
 
 /* ATTENDANCE (clock in/out) */
@@ -996,6 +1036,43 @@ app.get('*', (req, res) => {
 
 initDB().then(() => {
   initBot();
+
+  // Daily report at 9 PM
+  setInterval(async () => {
+    if (!botClient || !botGuildId) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const todayLogs = dbQuery("SELECT COUNT(*) as c FROM logs WHERE date(created_at)=?", [today]);
+    const todayApps = dbQuery("SELECT COUNT(*) as c FROM applications WHERE date=?", [today]);
+    const todayMembers = dbQuery("SELECT COUNT(*) as c FROM division_members WHERE date(created_at)=?", [today]);
+    const pendingApps = dbGet("SELECT COUNT(*) as c FROM applications WHERE status='pending'");
+    const totalMembers = dbGet("SELECT COUNT(*) as c FROM division_members");
+    const report = `📊 **تقرير يومي — ${today}**
+👥 إجمالي الأعضاء: ${totalMembers?.c || 0}
+📋 تقديمات اليوم: ${todayApps?.[0]?.c || 0}
+📜 سجلات اليوم: ${todayLogs?.[0]?.c || 0}
+⏳ قيد المراجعة: ${pendingApps?.c || 0}
+🆕 أعضاء جدد اليوم: ${todayMembers?.[0]?.c || 0}`;
+    try {
+      const wh = getWebhookUrl('webhook_applications');
+      if (wh) sendWebhook(wh, { content: report });
+    } catch {}
+  }, 24 * 60 * 60 * 1000);
+
+  // Auto backup every 6 hours
+  const backupsDir = path.join(__dirname, 'backups');
+  if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
+  setInterval(() => {
+    try {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const backupPath = path.join(backupsDir, `backup-${ts}.db`);
+      fs.copyFileSync(DB_PATH, backupPath);
+      // Keep only last 10 backups
+      const files = fs.readdirSync(backupsDir).filter(f => f.endsWith('.db')).sort();
+      while (files.length > 10) { fs.unlinkSync(path.join(backupsDir, files.shift())); }
+      console.log('Backup saved:', backupPath);
+    } catch (e) { console.error('Backup failed:', e.message); }
+  }, 6 * 60 * 60 * 1000);
+
   const os = require('os');
   const ifaces = os.networkInterfaces();
   const ip = Object.values(ifaces).flat().find(i => i.family === 'IPv4' && !i.internal)?.address || 'localhost';
