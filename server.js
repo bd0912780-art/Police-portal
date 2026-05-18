@@ -195,11 +195,15 @@ async function initDB() {
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     display_name TEXT NOT NULL,
-    emoji TEXT DEFAULT 'ًں‘¤',
+    emoji TEXT DEFAULT '👤',
     role TEXT NOT NULL DEFAULT 'VISITOR',
     is_owner INTEGER NOT NULL DEFAULT 0,
+    discord_tag TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now','localtime'))
   )`);
+
+  // Migration: add discord_tag if missing
+  try { db.run('ALTER TABLE users ADD COLUMN discord_tag TEXT DEFAULT ""'); } catch {}
 
   db.run(`CREATE TABLE IF NOT EXISTS announcements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -354,11 +358,23 @@ async function initDB() {
   }
 
   // Seed default announcements
-  const annCount = dbGet('SELECT COUNT(*) as c FROM announcements');
-  if (annCount.c === 0) {
-    db.run('INSERT INTO announcements (title,body,date) VALUES (?,?,?)',
-      ['مرحباً', 'مرحباً بكم في بوابة الشرطة', new Date().toISOString().slice(0,10)]);
-  }
+  try {
+    const annCount = dbGet('SELECT COUNT(*) as c FROM announcements');
+    if (annCount.c === 0) {
+      db.run('INSERT INTO announcements (title,body,date) VALUES (?,?,?)',
+        ['مرحباً', 'مرحباً بكم في بوابة الشرطة', new Date().toISOString().slice(0,10)]);
+    }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
+  } catch(e) { console.log('Announcements seed skipped:', e.message); }
 
   saveDB();
   console.log('âœ… Database initialized');
@@ -423,7 +439,7 @@ app.get('/api/users', auth, (req, res) => {
 
 app.post('/api/users', auth, (req, res) => {
   if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
-  const { username, password, display_name, emoji, role } = req.body;
+  const { username, password, display_name, emoji, role, discord_tag } = req.body;
   if (!username || !password || !display_name) return res.status(400).json({ error: 'Required fields missing' });
 
   const exists = dbGet('SELECT id FROM users WHERE LOWER(username)=LOWER(?)', [username]);
@@ -433,23 +449,29 @@ app.post('/api/users', auth, (req, res) => {
   const finalRole = validRoles.includes(role) ? role : 'VISITOR';
 
   const hash = bcrypt.hashSync(password, 10);
-  dbRun('INSERT INTO users (username,password,display_name,emoji,role) VALUES (?,?,?,?,?)',
-    [username, hash, display_name, emoji || 'ًں‘¤', finalRole]);
+  dbRun('INSERT INTO users (username,password,display_name,emoji,role,discord_tag) VALUES (?,?,?,?,?,?)',
+    [username, hash, display_name, emoji || '👤', finalRole, discord_tag || '']);
 
   logAction('create_user', req.user, `Created user: ${username} (${finalRole})`);
 
   // Send welcome DM
   const welcomeMsg = dbGet('SELECT value FROM settings WHERE key=?', ['welcome_message']);
   if (welcomeMsg && welcomeMsg.value) {
+    const tag = discord_tag || username;
     const msg = welcomeMsg.value
       .replace(/{username}/g, username)
       .replace(/{password}/g, password)
       .replace(/{name}/g, display_name)
       .replace(/{role}/g, finalRole);
-    sendDiscordDM(username, msg).catch(() => {});
+    sendDiscordDM(tag, msg).catch(() => {});
   }
 
   res.json({ success: true });
+});
+
+app.get('/api/users', auth, (req, res) => {
+  if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  res.json(dbQuery('SELECT id, username, display_name, emoji, role, is_owner, discord_tag, created_at FROM users ORDER BY id'));
 });
 
 app.put('/api/users/:id', auth, (req, res) => {
