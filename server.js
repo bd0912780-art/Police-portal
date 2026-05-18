@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 const { Client, GatewayIntentBits } = require('discord.js');
 const { createCanvas } = require('@napi-rs/canvas');
 
@@ -81,10 +82,23 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'lspd-portal-secret-key-change-in-production';
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'data.db');
 
-app.set('trust proxy', true);
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+/* ─── FILE UPLOAD CONFIG ─── */
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only images, PDFs, and text files allowed'));
+  }
+});
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PERMISSIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const PERM = {
@@ -216,6 +230,11 @@ async function initDB() {
   try { db.run("ALTER TABLE public_reports ADD COLUMN rank TEXT NOT NULL DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE public_reports ADD COLUMN link TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE public_reports ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"); } catch(e) {}
+  try { db.run("ALTER TABLE users ADD COLUMN discord_id TEXT UNIQUE DEFAULT NULL"); } catch(e) {}
+  try { db.run("ALTER TABLE users ADD COLUMN discord_avatar TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE users ADD COLUMN discord_tag TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE users ADD COLUMN last_seen TEXT DEFAULT NULL"); } catch(e) {}
+  try { db.run("ALTER TABLE applications ADD COLUMN discord_id TEXT DEFAULT ''"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS public_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,6 +253,46 @@ async function initDB() {
     points INTEGER DEFAULT 0,
     notes TEXT DEFAULT '',
     created_by INTEGER REFERENCES users(id),
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    username TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    action TEXT NOT NULL DEFAULT 'clock_in',
+    timestamp TEXT DEFAULT (datetime('now','localtime')),
+    date TEXT DEFAULT (date('now')),
+    note TEXT DEFAULT ''
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS uploaded_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+    size INTEGER NOT NULL DEFAULT 0,
+    ref_type TEXT DEFAULT '',
+    ref_id INTEGER DEFAULT NULL,
+    uploaded_by INTEGER REFERENCES users(id),
+    uploaded_at TEXT DEFAULT (datetime('now','localtime'))
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS leave_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    discord_tag TEXT DEFAULT '',
+    discord_id TEXT DEFAULT '',
+    type TEXT NOT NULL DEFAULT 'annual',
+    reason TEXT DEFAULT '',
+    from_date TEXT NOT NULL,
+    to_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    source TEXT NOT NULL DEFAULT 'portal',
+    created_by INTEGER REFERENCES users(id),
+    reviewed_by INTEGER REFERENCES users(id),
+    reviewed_at TEXT DEFAULT NULL,
     created_at TEXT DEFAULT (datetime('now','localtime'))
   )`);
 
@@ -292,28 +351,31 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
+  // Update last_seen
+  dbRun("UPDATE users SET last_seen=datetime('now','localtime') WHERE id=?", [user.id]);
+
   const token = jwt.sign(
-    { id: user.id, username: user.username, display_name: user.display_name, role: user.role, is_owner: !!user.is_owner, emoji: user.emoji },
+    { id: user.id, username: user.username, display_name: user.display_name, role: user.role, is_owner: !!user.is_owner, emoji: user.emoji, discord_id: user.discord_id || null },
     JWT_SECRET, { expiresIn: '24h' }
   );
 
   logAction('login', user);
   res.json({
     token,
-    user: { id: user.id, username: user.username, display_name: user.display_name, emoji: user.emoji, role: user.role, is_owner: !!user.is_owner }
+    user: { id: user.id, username: user.username, display_name: user.display_name, emoji: user.emoji, role: user.role, is_owner: !!user.is_owner, discord_id: user.discord_id || null }
   });
 });
 
 app.get('/api/me', auth, (req, res) => {
-  const user = dbGet('SELECT id, username, display_name, emoji, role, is_owner FROM users WHERE id = ?', [req.user.id]);
+  const user = dbGet('SELECT id, username, display_name, emoji, role, is_owner, discord_id, discord_avatar, discord_tag FROM users WHERE id = ?', [req.user.id]);
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({ ...user, is_owner: !!user.is_owner });
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ USERS / ACCOUNTS (owner only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* USERS / ACCOUNTS (owner only) */
 app.get('/api/users', auth, (req, res) => {
   if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
-  const users = dbQuery('SELECT id, username, display_name, emoji, role, is_owner, created_at FROM users ORDER BY is_owner DESC, id ASC');
+  const users = dbQuery('SELECT id, username, display_name, emoji, role, is_owner, discord_id, discord_avatar, discord_tag, last_seen, created_at FROM users ORDER BY is_owner DESC, id ASC');
   res.json(users.map(u => ({ ...u, is_owner: !!u.is_owner })));
 });
 
@@ -698,6 +760,179 @@ app.delete('/api/division-members/:id', auth, (req, res) => {
   dbRun('DELETE FROM division_members WHERE id=?', [member.id]);
   logAction('delete_division_member', req.user, member.name);
   res.json({ success: true });
+});
+
+/* ATTENDANCE (clock in/out) */
+app.get('/api/attendance', auth, (req, res) => {
+  if (!hasPerm(req.user, 'reports', 'view') && req.user.role !== 'OWNER') return res.status(403).json({ error: 'Forbidden' });
+  const { date, user_id } = req.query;
+  let sql = 'SELECT a.*, u.discord_avatar FROM attendance a LEFT JOIN users u ON a.user_id=u.id';
+  const params = [];
+  const conds = [];
+  if (date) { conds.push('a.date=?'); params.push(date); }
+  if (user_id) { conds.push('a.user_id=?'); params.push(user_id); }
+  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+  sql += ' ORDER BY a.id DESC LIMIT 200';
+  res.json(dbQuery(sql, params));
+});
+
+app.post('/api/attendance/clock', auth, (req, res) => {
+  const { action, note } = req.body;
+  if (!action || !['clock_in','clock_out'].includes(action)) return res.status(400).json({ error: 'Invalid action' });
+  const today = new Date().toISOString().slice(0,10);
+  // Check if already clocked in today
+  if (action === 'clock_in') {
+    const existing = dbGet("SELECT id FROM attendance WHERE user_id=? AND date=? AND action='clock_in'", [req.user.id, today]);
+    if (existing) return res.status(400).json({ error: 'تم تسجيل الحضور مسبقاً اليوم' });
+  }
+  if (action === 'clock_out') {
+    const existing = dbGet("SELECT id FROM attendance WHERE user_id=? AND date=? AND action='clock_out'", [req.user.id, today]);
+    if (existing) return res.status(400).json({ error: 'تم تسجيل الانصراف مسبقاً اليوم' });
+  }
+  dbRun("INSERT INTO attendance (user_id, username, display_name, action, note) VALUES (?,?,?,?,?)",
+    [req.user.id, req.user.username, req.user.display_name, action, note || '']);
+  logAction('attendance_' + action, req.user);
+  const msg = action === 'clock_in' ? '✅ تم تسجيل الحضور' : '✅ تم تسجيل الانصراف';
+  res.json({ success: true, message: msg });
+});
+
+app.get('/api/attendance/summary', auth, (req, res) => {
+  if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const { date } = req.query;
+  const today = date || new Date().toISOString().slice(0,10);
+  const clockedIn = dbQuery("SELECT DISTINCT user_id, display_name FROM attendance WHERE date=? AND action='clock_in'", [today]);
+  const clockedOut = dbQuery("SELECT DISTINCT user_id, display_name FROM attendance WHERE date=? AND action='clock_out'", [today]);
+  res.json({
+    date: today,
+    clocked_in: clockedIn,
+    clocked_out: clockedOut,
+    total_in: clockedIn.length,
+    total_out: clockedOut.length
+  });
+});
+
+/* FILE UPLOAD */
+app.post('/api/upload', auth, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const { ref_type, ref_id } = req.body;
+  const result = dbRun('INSERT INTO uploaded_files (filename, original_name, mime_type, size, ref_type, ref_id, uploaded_by) VALUES (?,?,?,?,?,?,?)',
+    [req.file.filename, req.file.originalname, req.file.mimetype, req.file.size, ref_type || '', ref_id || null, req.user.id]);
+  logAction('upload_file', req.user, req.file.originalname);
+  res.json({
+    success: true,
+    file: {
+      id: result.lastInsertRowid,
+      filename: req.file.filename,
+      original_name: req.file.originalname,
+      mime_type: req.file.mimetype,
+      size: req.file.size,
+      url: '/uploads/' + req.file.filename
+    }
+  });
+});
+
+app.get('/api/files', auth, (req, res) => {
+  if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const { ref_type, ref_id } = req.query;
+  let sql = 'SELECT * FROM uploaded_files';
+  const params = [];
+  const conds = [];
+  if (ref_type) { conds.push('ref_type=?'); params.push(ref_type); }
+  if (ref_id) { conds.push('ref_id=?'); params.push(ref_id); }
+  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+  sql += ' ORDER BY id DESC';
+  res.json(dbQuery(sql, params));
+});
+
+app.delete('/api/files/:id', auth, (req, res) => {
+  if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const file = dbGet('SELECT * FROM uploaded_files WHERE id=?', [req.params.id]);
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  const filePath = path.join(uploadsDir, file.filename);
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
+  dbRun('DELETE FROM uploaded_files WHERE id=?', [req.params.id]);
+  logAction('delete_file', req.user, file.original_name);
+  res.json({ success: true });
+});
+
+/* LEAVE REQUESTS */
+app.get('/api/leave', auth, (req, res) => {
+  if (!hasPerm(req.user, 'applications', 'view') && req.user.role !== 'OWNER') return res.status(403).json({ error: 'Forbidden' });
+  const { status, source } = req.query;
+  let sql = 'SELECT * FROM leave_requests';
+  const params = [];
+  const conds = [];
+  if (status) { conds.push('status=?'); params.push(status); }
+  if (source) { conds.push('source=?'); params.push(source); }
+  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+  sql += ' ORDER BY id DESC LIMIT 100';
+  res.json(dbQuery(sql, params));
+});
+
+app.post('/api/leave', auth, (req, res) => {
+  const { type, reason, from_date, to_date } = req.body;
+  if (!type || !from_date || !to_date) return res.status(400).json({ error: 'Required fields missing' });
+  dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'portal',?)",
+    [req.user.display_name, req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
+  logAction('create_leave', req.user, type + ' ' + from_date + ' -> ' + to_date);
+  res.json({ success: true, message: '✅ تم تقديم طلب الإجازة' });
+});
+
+app.put('/api/leave/:id/status', auth, (req, res) => {
+  if (!hasPerm(req.user, 'applications', 'full') && req.user.role !== 'OWNER') return res.status(403).json({ error: 'Forbidden' });
+  const { status } = req.body;
+  if (!['approved','rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  const leave = dbGet('SELECT * FROM leave_requests WHERE id=?', [req.params.id]);
+  if (!leave) return res.status(404).json({ error: 'Not found' });
+  dbRun('UPDATE leave_requests SET status=?, reviewed_by=?, reviewed_at=datetime(\"now\",\"localtime\") WHERE id=?', [status, req.user.id, leave.id]);
+  logAction('update_leave', req.user, leave.name + ' -> ' + status);
+  if (leave.discord_tag) {
+    const statusMsg = status === 'approved' ? '✅ تمت الموافقة على طلب الإجازة' : '❌ تم رفض طلب الإجازة';
+    sendDiscordDM(leave.discord_tag, '**' + statusMsg + '**\n`النوع: ' + leave.type + '\nمن: ' + leave.from_date + '\nإلى: ' + leave.to_date + '`');
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/leave/:id', auth, (req, res) => {
+  if (!hasPerm(req.user, 'applications', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const leave = dbGet('SELECT * FROM leave_requests WHERE id=?', [req.params.id]);
+  if (!leave) return res.status(404).json({ error: 'Not found' });
+  dbRun('DELETE FROM leave_requests WHERE id=?', [req.params.id]);
+  logAction('delete_leave', req.user, leave.name);
+  res.json({ success: true });
+});
+
+/* ADVANCED STATS */
+app.get('/api/stats/overview', auth, (req, res) => {
+  if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const totalUsers = dbGet('SELECT COUNT(*) as c FROM users')?.c || 0;
+  const totalApps = dbGet('SELECT COUNT(*) as c FROM applications')?.c || 0;
+  const pendingApps = dbGet("SELECT COUNT(*) as c FROM applications WHERE status='pending'")?.c || 0;
+  const totalCerts = dbGet('SELECT COUNT(*) as c FROM certificates')?.c || 0;
+  const totalReports = dbGet('SELECT COUNT(*) as c FROM reports')?.c || 0;
+  const totalAnn = dbGet('SELECT COUNT(*) as c FROM announcements')?.c || 0;
+  const totalPublicReports = dbGet('SELECT COUNT(*) as c FROM public_reports')?.c || 0;
+  const totalDivMembers = dbGet('SELECT COUNT(*) as c FROM division_members')?.c || 0;
+  const todayAtt = dbGet("SELECT COUNT(*) as c FROM attendance WHERE date=date('now') AND action='clock_in'")?.c || 0;
+  res.json({
+    totalUsers, totalApps, pendingApps, totalCerts,
+    totalReports, totalAnn, totalPublicReports,
+    totalDivMembers, todayAttendance: todayAtt
+  });
+});
+
+app.get('/api/stats/applications-by-date', auth, (req, res) => {
+  if (!hasPerm(req.user, 'applications', 'view')) return res.status(403).json({ error: 'Forbidden' });
+  const days = parseInt(req.query.days) || 30;
+  const data = dbQuery("SELECT date, COUNT(*) as count, SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as accepted, SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) as rejected FROM applications WHERE date >= date('now','-' || ? || ' days') GROUP BY date ORDER BY date", [days]);
+  res.json(data);
+});
+
+app.get('/api/stats/certificates-by-month', auth, (req, res) => {
+  if (!hasPerm(req.user, 'certificates', 'full')) return res.status(403).json({ error: 'Forbidden' });
+  const months = parseInt(req.query.months) || 12;
+  const data = dbQuery("SELECT strftime('%Y-%m', date_created) as month, COUNT(*) as count FROM certificates WHERE date_created >= datetime('now','-' || ? || ' months') GROUP BY month ORDER BY month", [months]);
+  res.json(data);
 });
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ RANKS (public) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
