@@ -73,7 +73,7 @@ async function initBot() {
     if (!prefixes.some(p => content.startsWith(p))) return;
     const matched = prefixes.find(p => content.startsWith(p));
     const raw = content.slice(matched.length).trim().split(/\s+/);
-    console.log('Bot: received اجازة:', raw);
+    console.log('Bot: received:', matched, raw);
     const days = parseInt(raw[0]);
     if (!days || days < 1) { msg.reply('⚠️ استخدم: `!اجازة [عدد الأيام] [اسمك]`\nمثال: `!اجازة 7 أحمد`'); return; }
     const name = raw.slice(1).join(' ') || msg.author.displayName || msg.author.username;
