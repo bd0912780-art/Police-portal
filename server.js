@@ -415,16 +415,32 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  const user = dbGet('SELECT id, username, display_name, emoji, role, is_owner, discord_id, discord_avatar, discord_tag FROM users WHERE id = ?', [req.user.id]);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ ...user, is_owner: !!user.is_owner });
+  try {
+    const user = dbGet('SELECT id, username, display_name, emoji, role, is_owner, discord_id, discord_avatar, discord_tag FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ ...user, is_owner: !!user.is_owner });
+  } catch(e) {
+    const user = dbGet('SELECT id, username, display_name, emoji, role, is_owner FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ ...user, is_owner: !!user.is_owner });
+  }
 });
 
 /* USERS / ACCOUNTS (owner only) */
 app.get('/api/users', auth, (req, res) => {
   if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
-  const users = dbQuery('SELECT id, username, display_name, emoji, role, is_owner, discord_id, discord_avatar, discord_tag, last_seen, created_at FROM users ORDER BY is_owner DESC, id ASC');
-  res.json(users.map(u => ({ ...u, is_owner: !!u.is_owner })));
+  try {
+    const users = dbQuery('SELECT id, username, display_name, emoji, role, is_owner, discord_id, discord_avatar, discord_tag, last_seen, created_at FROM users ORDER BY is_owner DESC, id ASC');
+    res.json(users.map(u => ({ ...u, is_owner: !!u.is_owner })));
+  } catch(e) {
+    try {
+      const users = dbQuery('SELECT id, username, display_name, emoji, role, is_owner, discord_tag, created_at FROM users ORDER BY is_owner DESC, id ASC');
+      res.json(users.map(u => ({ ...u, is_owner: !!u.is_owner })));
+    } catch(e2) {
+      const users = dbQuery('SELECT id, username, display_name, emoji, role, is_owner FROM users ORDER BY is_owner DESC, id ASC');
+      res.json(users.map(u => ({ ...u, is_owner: !!u.is_owner })));
+    }
+  }
 });
 
 app.post('/api/users', auth, (req, res) => {
@@ -618,10 +634,14 @@ app.delete('/api/public-reports/:id', auth, (req, res) => {
 
 app.get('/api/stats/members', auth, (req, res) => {
   if (!hasPerm(req.user, 'accounts', 'full')) return res.status(403).json({ error: 'Forbidden' });
-  const stats = dbQuery('SELECT role, COUNT(*) as count FROM users WHERE is_owner=0 GROUP BY role');
-  const result = { total: 0 };
-  stats.forEach(s => { result[s.role] = s.count; result.total += s.count; });
-  res.json(result);
+  try {
+    const stats = dbQuery('SELECT role, COUNT(*) as count FROM users WHERE is_owner=0 GROUP BY role');
+    const result = { total: 0 };
+    stats.forEach(s => { result[s.role] = s.count; result.total += s.count; });
+    res.json(result);
+  } catch(e) {
+    res.json({ total: 0 });
+  }
 });
 
 app.get('/api/applications', auth, (req, res) => {
@@ -834,11 +854,11 @@ app.get('/api/division-members/:id/point-logs', auth, (req, res) => {
 
 app.get('/api/stats/advanced', auth, (req, res) => {
   if (!hasPerm(req.user, 'applications', 'view')) return res.status(403).json({ error: 'Forbidden' });
-  const activity7d = dbQuery("SELECT date(created_at) as day, COUNT(*) as count FROM logs WHERE date(created_at) >= date('now','-7 days') GROUP BY day ORDER BY day");
-  const topWarned = dbQuery("SELECT dm.name, dm.division, COUNT(*) as warn_count FROM point_logs pl JOIN division_members dm ON pl.member_id=dm.id WHERE pl.points < 0 GROUP BY pl.member_id ORDER BY warn_count DESC LIMIT 10");
-  const appRate = dbGet("SELECT COUNT(*) as total, SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as accepted, SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) as rejected, ROUND(CAST(SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as rate FROM applications WHERE status != 'pending'");
-  const newMembers7d = dbQuery("SELECT date(created_at) as day, COUNT(*) as count FROM division_members WHERE date(created_at) >= date('now','-7 days') GROUP BY day ORDER BY day");
-  const divisionStats = dbQuery("SELECT division, COUNT(*) as count, SUM(points) as total_points FROM division_members GROUP BY division ORDER BY count DESC");
+  let activity7d = []; try { activity7d = dbQuery("SELECT date(date) as day, COUNT(*) as count FROM logs WHERE date(date) >= date('now','-7 days') GROUP BY day ORDER BY day"); } catch {}
+  let topWarned = []; try { topWarned = dbQuery("SELECT dm.name, dm.division, COUNT(*) as warn_count FROM point_logs pl JOIN division_members dm ON pl.member_id=dm.id WHERE pl.points < 0 GROUP BY pl.member_id ORDER BY warn_count DESC LIMIT 10"); } catch {}
+  let appRate = {}; try { appRate = dbGet("SELECT COUNT(*) as total, SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as accepted, SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) as rejected, ROUND(CAST(SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as rate FROM applications WHERE status != 'pending'"); } catch {}
+  let newMembers7d = []; try { newMembers7d = dbQuery("SELECT date(created_at) as day, COUNT(*) as count FROM division_members WHERE date(created_at) >= date('now','-7 days') GROUP BY day ORDER BY day"); } catch {}
+  let divisionStats = []; try { divisionStats = dbQuery("SELECT division, COUNT(*) as count, SUM(points) as total_points FROM division_members GROUP BY division ORDER BY count DESC"); } catch {}
   res.json({ activity7d, topWarned, appRate: appRate || {}, newMembers7d, divisionStats });
 });
 
