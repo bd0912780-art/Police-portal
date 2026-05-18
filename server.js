@@ -69,14 +69,14 @@ async function initBot() {
     if (msg.author.bot) return;
     const content = msg.content || '';
     if (!content) { msg.reply('⚠️ البوت مايقدر يقرأ الرسائل. تأكد من تفعيل **Message Content Intent** في Developer Portal').catch(()=>{}); return; }
-    const prefixes = ['!اجازة', '!leave'];
+    const prefixes = ['!طلب_اجازة', '!leave'];
     if (!prefixes.some(p => content.startsWith(p))) return;
     const matched = prefixes.find(p => content.startsWith(p));
-    const raw = content.slice(matched.length).trim().split(/\s+/);
+    const raw = content.slice(matched.length).trim().split('\n').map(s => s.trim()).filter(Boolean);
     console.log('Bot: received:', matched, raw);
-    const days = parseInt(raw[0]);
-    if (!days || days < 1) { msg.reply('⚠️ استخدم: `!اجازة [عدد الأيام] [اسمك]`\nمثال: `!اجازة 7 أحمد`'); return; }
-    const name = raw.slice(1).join(' ') || msg.author.displayName || msg.author.username;
+    const name = raw[0] || msg.author.displayName || msg.author.username;
+    const days = parseInt(raw[1]);
+    if (!days || days < 1) { msg.reply('⚠️ استخدم:\n`!طلب_اجازة`\n`الاسم`\n`عدد الأيام`\nمثال:\n`!طلب_اجازة`\n`أحمد`\n`7`'); return; }
     const today = new Date();
     const from_date = today.toISOString().slice(0,10);
     const end = new Date(today); end.setDate(end.getDate() + days);
