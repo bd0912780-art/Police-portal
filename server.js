@@ -63,8 +63,37 @@ async function initBot() {
   const bg = dbGet('SELECT value FROM settings WHERE key=?', ['guild_id']);
   botGuildId = bg ? bg.value : '';
   if (!token || !token.value) return;
-  botClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+  botClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent] });
   botClient.on('clientReady', () => console.log('Bot online:', botClient.user.tag));
+  botClient.on('messageCreate', async msg => {
+    if (msg.author.bot) return;
+    const prefix = '!leave';
+    if (!msg.content.startsWith(prefix)) return;
+    const args = msg.content.slice(prefix.length).trim();
+    const parts = {};
+    args.split(/\s+/).forEach(p => {
+      const m = p.match(/^(\w+):(.+)$/);
+      if (m) parts[m[1].toLowerCase()] = m[2];
+    });
+    const type = parts.type || 'annual';
+    const reason = parts.reason || '';
+    const from_date = parts.from;
+    const to_date = parts.to;
+    const discord_tag = parts.discord || msg.author.tag;
+    if (!from_date || !to_date) {
+      msg.reply('⚠️ استخدم: `!leave type:سنوية from:2026-05-20 to:2026-05-22 reason:سبب discord:اسمك#0000`');
+      return;
+    }
+    try {
+      dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'discord',NULL)",
+        [msg.author.displayName || msg.author.username, discord_tag, type, reason, from_date, to_date]);
+      msg.reply('✅ تم تقديم طلب الإجازة بنجاح! سيتم مراجعته من قبل الإدارة.');
+      const wh = getWebhookUrl('webhook_applications');
+      if (wh) sendWebhook(wh, { content: `📩 **طلب إجازة جديد (دسكورد)**\nالاسم: ${msg.author.displayName || msg.author.username}\nالنوع: ${type}\nمن: ${from_date}\nإلى: ${to_date}\nالسبب: ${reason || '—'}` });
+    } catch(e) {
+      msg.reply('❌ حدث خطأ: ' + e.message);
+    }
+  });
   try { await botClient.login(token.value); } catch(e) { console.error('Bot login fail:', e.message); botClient = null; }
 }
 async function sendDiscordDM(tag, content) {
