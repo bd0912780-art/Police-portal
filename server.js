@@ -1000,24 +1000,28 @@ app.delete('/api/files/:id', auth, (req, res) => {
 /* LEAVE REQUESTS */
 app.get('/api/leave', auth, (req, res) => {
   if (!hasPerm(req.user, 'applications', 'view') && req.user.role !== 'OWNER') return res.status(403).json({ error: 'Forbidden' });
-  const { status, source } = req.query;
-  let sql = 'SELECT * FROM leave_requests';
-  const params = [];
-  const conds = [];
-  if (status) { conds.push('status=?'); params.push(status); }
-  if (source) { conds.push('source=?'); params.push(source); }
-  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
-  sql += ' ORDER BY id DESC LIMIT 100';
-  res.json(dbQuery(sql, params));
+  try {
+    const { status, source } = req.query;
+    let sql = 'SELECT * FROM leave_requests';
+    const params = [];
+    const conds = [];
+    if (status) { conds.push('status=?'); params.push(status); }
+    if (source) { conds.push('source=?'); params.push(source); }
+    if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+    sql += ' ORDER BY id DESC LIMIT 100';
+    res.json(dbQuery(sql, params));
+  } catch(e) { res.json([]); }
 });
 
 app.post('/api/leave', auth, (req, res) => {
   const { type, reason, from_date, to_date, discord_tag } = req.body;
   if (!type || !from_date || !to_date) return res.status(400).json({ error: 'Required fields missing' });
-  dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'portal',?)",
-    [req.user.display_name, discord_tag || req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
-  logAction('create_leave', req.user, type + ' ' + from_date + ' -> ' + to_date);
-  res.json({ success: true, message: '✅ تم تقديم طلب الإجازة' });
+  try {
+    dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'portal',?)",
+      [req.user.display_name, discord_tag || req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
+    logAction('create_leave', req.user, type + ' ' + from_date + ' -> ' + to_date);
+    res.json({ success: true, message: '✅ تم تقديم طلب الإجازة' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/leave/:id/status', auth, (req, res) => {
