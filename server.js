@@ -83,12 +83,15 @@ async function initBot() {
     const to_date = end.toISOString().slice(0,10);
     const discord_tag = msg.author.tag;
     try {
+      console.log('Bot leave request:', name, discord_tag, 'annual', from_date, to_date);
       dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'discord',NULL)",
         [name, discord_tag, 'annual', 'إجازة ' + days + ' يوم', from_date, to_date]);
       msg.reply('✅ تم استلام طلب الإجازة! سيتم مراجعته من قبل المسؤولين.');
+      console.log('Bot leave request saved successfully');
       const wh = getWebhookUrl('webhook_applications');
       if (wh) sendWebhook(wh, { content: `📩 **طلب إجازة جديد**\nالاسم: ${name}\nالمدة: ${days} يوم\nمن: ${from_date}\nإلى: ${to_date}` });
     } catch(e) {
+      console.error('Bot leave request error:', e.message);
       msg.reply('❌ حدث خطأ: ' + e.message);
     }
   });
@@ -1009,8 +1012,10 @@ app.get('/api/leave', auth, (req, res) => {
     if (source) { conds.push('source=?'); params.push(source); }
     if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
     sql += ' ORDER BY id DESC LIMIT 100';
-    res.json(dbQuery(sql, params));
-  } catch(e) { res.json([]); }
+    const results = dbQuery(sql, params);
+    console.log('Leave requests:', results.length);
+    res.json(results);
+  } catch(e) { console.error('Leave GET error:', e.message); res.json([]); }
 });
 
 app.post('/api/leave', auth, (req, res) => {
@@ -1020,13 +1025,12 @@ app.post('/api/leave', auth, (req, res) => {
     dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'portal',?)",
       [req.user.display_name, discord_tag || req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
     logAction('create_leave', req.user, type + ' ' + from_date + ' -> ' + to_date);
-    // Send confirmation DM
     const finalTag = discord_tag || req.user.discord_tag || '';
     if (finalTag) {
       sendDiscordDM(finalTag, `✅ تم استلام طلب الإجازة الخاص بك\n\n📋 النوع: ${type}\n📅 من: ${from_date}\n📅 إلى: ${to_date}\n\nسيتم مراجعة طلبك قريباً`).catch(() => {});
     }
     res.json({ success: true, message: '✅ تم تقديم طلب الإجازة' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('Leave POST error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/leave/:id/status', auth, (req, res) => {
