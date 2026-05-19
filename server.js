@@ -69,7 +69,7 @@ async function initBot() {
     if (msg.author.bot) return;
     const content = msg.content || '';
     if (!content) return;
-    const prefixes = ['!طلب_اجازة', '!leave'];
+    const prefixes = ['!طلب_اجازة', '!اجازه', '!leave'];
     if (!prefixes.some(p => content.startsWith(p))) return;
     const matched = prefixes.find(p => content.startsWith(p));
     const raw = content.slice(matched.length).trim().split('\n').map(s => s.trim()).filter(Boolean);
