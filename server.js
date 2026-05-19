@@ -1006,18 +1006,10 @@ app.delete('/api/files/:id', auth, (req, res) => {
 app.get('/api/leave', auth, (req, res) => {
   if (!hasPerm(req.user, 'applications', 'view') && req.user.role !== 'OWNER') return res.status(403).json({ error: 'Forbidden' });
   try {
-    const { status, source } = req.query;
-    let sql = 'SELECT * FROM leave_requests';
-    const params = [];
-    const conds = [];
-    if (status) { conds.push('status=?'); params.push(status); }
-    if (source) { conds.push('source=?'); params.push(source); }
-    if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
-    sql += ' ORDER BY id DESC LIMIT 100';
-    const results = dbQuery(sql, params);
-    console.log('Leave requests:', results.length);
-    res.json(results);
-  } catch(e) { console.error('Leave GET error:', e.message); res.json([]); }
+    const all = dbQuery('SELECT * FROM leave_requests ORDER BY id DESC LIMIT 100');
+    console.log('GET /api/leave - total rows:', all.length, 'data:', JSON.stringify(all.slice(0,3)));
+    res.json(all);
+  } catch(e) { console.error('Leave GET error:', e.message, e.stack); res.json([]); }
 });
 
 app.post('/api/leave', auth, (req, res) => {
