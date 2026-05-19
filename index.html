@@ -497,7 +497,7 @@ async function loadDashData(){
   if(can('division_members','full'))try{window._divisionMembers=await api('GET','/api/division-members')}catch{}
   const _isHead=currentUser.is_owner||currentUser.role==='FULL ACCESS'
   if(_isHead)try{window._pubReports=await api('GET','/api/public-reports')}catch{}
-  if(can('applications','view'))try{window._leave=await api('GET','/api/leave')}catch{}
+  if(can('applications','view'))try{window._leave=await api('GET','/api/leave');console.log('Leave loaded:', window._leave.length)}catch(e){console.error('Leave load error:',e.message)}
   if(can('accounts','full')){
     try{window._statsOverview=await api('GET','/api/stats/overview')}catch{}
     try{window._appsByDate=await api('GET','/api/stats/applications-by-date?days=30')}catch{}
@@ -795,8 +795,9 @@ async function clearLogs(){if(!await confirmModal('مسح جميع السجلا�
 
 /* ─── LEAVE ─── */
 function renderDashLeave(){
-  if(!can('applications','view'))return
+  if(!can('applications','view')){console.log('Leave: no permission');return}
   const l=window._leave||[]
+  console.log('renderDashLeave - count:', l.length, 'data:', l)
   const canManage=can('applications','full')
   const leaveTypes=[{value:'annual',label:'سنوية'},{value:'sick',label:'مرضية'},{value:'personal',label:'شخصية'},{value:'other',label:'أخرى'}]
 
