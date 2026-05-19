@@ -66,33 +66,35 @@ async function initBot() {
   botClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
   botClient.on('clientReady', () => console.log('Bot online:', botClient.user.tag));
   botClient.on('messageCreate', async msg => {
-    if (msg.author.bot) return;
-    const content = msg.content || '';
-    if (!content) return;
-    const prefixes = ['!طلب_اجازة', '!اجازه', '!leave'];
-    if (!prefixes.some(p => content.startsWith(p))) return;
-    const matched = prefixes.find(p => content.startsWith(p));
-    const raw = content.slice(matched.length).trim().split('\n').map(s => s.trim()).filter(Boolean);
-    console.log('Bot: received:', matched, raw);
-    const name = raw[0] || msg.author.displayName || msg.author.username;
-    const days = parseInt(raw[1]);
-    if (!days || days < 1) { msg.reply('⚠️ استخدم:\n`!طلب_اجازة`\n`الاسم`\n`عدد الأيام`\nمثال:\n`!طلب_اجازة`\n`أحمد`\n`7`'); return; }
-    const today = new Date();
-    const from_date = today.toISOString().slice(0,10);
-    const end = new Date(today); end.setDate(end.getDate() + days);
-    const to_date = end.toISOString().slice(0,10);
-    const discord_tag = msg.author.tag;
     try {
-      console.log('Bot leave request:', name, discord_tag, 'annual', from_date, to_date);
-      dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'discord',NULL)",
+      if (msg.author.bot) return;
+      const content = msg.content || '';
+      if (!content) return;
+      const prefixes = ['!طلب_اجازة', '!اجازه', '!leave'];
+      if (!prefixes.some(p => content.startsWith(p))) return;
+      const matched = prefixes.find(p => content.startsWith(p));
+      const raw = content.slice(matched.length).trim().split('\n').map(s => s.trim()).filter(Boolean);
+      console.log('Bot: received:', matched, raw);
+      const name = raw[0] || msg.author.displayName || msg.author.username;
+      const days = parseInt(raw[1]);
+      console.log('Bot: name=', name, 'days=', days);
+      if (!days || days < 1) { msg.reply('⚠️ استخدم:\n`!اجازه`\n`الاسم`\n`عدد الأيام`').catch(()=>{}); return; }
+      const today = new Date();
+      const from_date = today.toISOString().slice(0,10);
+      const end = new Date(today); end.setDate(end.getDate() + days);
+      const to_date = end.toISOString().slice(0,10);
+      const discord_tag = msg.author.username;
+      console.log('Bot: inserting leave request...');
+      db.run("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'discord',NULL)",
         [name, discord_tag, 'annual', 'إجازة ' + days + ' يوم', from_date, to_date]);
-      msg.reply('✅ تم استلام طلب الإجازة! سيتم مراجعته من قبل المسؤولين.');
+      saveDB();
+      msg.reply('✅ تم استلام طلب الإجازة! سيتم مراجعته من قبل المسؤولين.').catch(()=>{});
       console.log('Bot leave request saved successfully');
       const wh = getWebhookUrl('webhook_applications');
       if (wh) sendWebhook(wh, { content: `📩 **طلب إجازة جديد**\nالاسم: ${name}\nالمدة: ${days} يوم\nمن: ${from_date}\nإلى: ${to_date}` });
     } catch(e) {
-      console.error('Bot leave request error:', e.message);
-      msg.reply('❌ حدث خطأ: ' + e.message);
+      console.error('Bot leave request error:', e.message, e.stack);
+      try { msg.reply('❌ حدث خطأ: ' + e.message).catch(()=>{}); } catch {}
     }
   });
   try { await botClient.login(token.value); } catch(e) { console.error('Bot login fail:', e.message); botClient = null; }
