@@ -68,7 +68,7 @@ async function initBot() {
   botClient.on('messageCreate', async msg => {
     if (msg.author.bot) return;
     const content = msg.content || '';
-    if (!content) { msg.reply('⚠️ البوت مايقدر يقرأ الرسائل. تأكد من تفعيل **Message Content Intent** في Developer Portal').catch(()=>{}); return; }
+    if (!content) return;
     const prefixes = ['!طلب_اجازة', '!leave'];
     if (!prefixes.some(p => content.startsWith(p))) return;
     const matched = prefixes.find(p => content.startsWith(p));
