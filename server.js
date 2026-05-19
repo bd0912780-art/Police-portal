@@ -1020,6 +1020,11 @@ app.post('/api/leave', auth, (req, res) => {
     dbRun("INSERT INTO leave_requests (name, discord_tag, type, reason, from_date, to_date, source, created_by) VALUES (?,?,?,?,?,?,'portal',?)",
       [req.user.display_name, discord_tag || req.user.discord_tag || '', type, reason || '', from_date, to_date, req.user.id]);
     logAction('create_leave', req.user, type + ' ' + from_date + ' -> ' + to_date);
+    // Send confirmation DM
+    const finalTag = discord_tag || req.user.discord_tag || '';
+    if (finalTag) {
+      sendDiscordDM(finalTag, `✅ تم استلام طلب الإجازة الخاص بك\n\n📋 النوع: ${type}\n📅 من: ${from_date}\n📅 إلى: ${to_date}\n\nسيتم مراجعة طلبك قريباً`).catch(() => {});
+    }
     res.json({ success: true, message: '✅ تم تقديم طلب الإجازة' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
